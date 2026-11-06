@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Urban and Rural in Yguazú — Census 2022</title>
+    <meta name="description" content="Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations." />
+  </head>
+  <body>
+    <div class="app">
+      <header class="head">
+        <div>
+          <h1 data-t="title"></h1>
+          <p class="place" data-t="place"></p>
+        </div>
+        <button type="button" id="lang" class="lang"></button>
+      </header>
+
+      <main class="map-wrap">
+        <div id="map" aria-label="Map of urban and rural census areas in Yguazú"></div>
+        <div class="map-tools">
+          <button type="button" id="zoom-urban" data-t="zoomUrban" disabled></button>
+          <button type="button" id="reset" data-t="reset" disabled></button>
+        </div>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </main>
+
+      <aside class="panel">
+        <p class="lead" data-t="lead"></p>
+
+        <section class="figures" aria-labelledby="bar-label">
+          <dl class="numbers">
+            <div class="num urban" data-area="urban">
+              <dt><span class="sw sw-urban"></span><span data-t="urban"></span></dt>
+              <dd><strong id="pop-urban">—</strong> <span class="pct" id="pct-urban"></span></dd>
+            </div>
+            <div class="num rural" data-area="rural">
+              <dt><span class="sw sw-rural"></span><span data-t="rural"></span></dt>
+              <dd><strong id="pop-rural">—</strong> <span class="pct" id="pct-rural"></span></dd>
+            </div>
+            <div class="num total">
+              <dt data-t="total"></dt>
+              <dd><strong id="pop-total">—</strong> <span class="pct" aria-hidden="true"></span></dd>
+            </div>
+          </dl>
+
+          <h2 class="bar-label" id="bar-label" data-t="barLabel"></h2>
+          <div class="bar" role="img" id="bar">
+            <div class="bar-urban" id="bar-urban"></div>
+            <div class="bar-rural" id="bar-rural"></div>
+          </div>
+          <p class="bar-note" data-t="barNote"></p>
+        </section>
+
+        <ul class="legend">
+          <li><span class="sw sw-urban"></span><span data-t="legendUrban"></span></li>
+          <li><span class="sw sw-rural"></span><span data-t="legendRural"></span></li>
+          <li><span class="sw sw-outside"></span><span data-t="legendOutside"></span></li>
+        </ul>
+        <p class="hint" data-t="hint"></p>
+
+        <details class="notes">
+          <summary data-t="notesTitle"></summary>
+          <p data-t="note1"></p>
+          <p data-t="note2"></p>
+          <p data-t="note3"></p>
+        </details>
+
+        <section class="source">
+          <h2 data-t="sourceTitle"></h2>
+          <p data-t="source"></p>
+          <p data-t="processing"></p>
+          <p data-t="license"></p>
+          <p class="links">
+            <a href="https://www.ine.gov.py/microdatos/cartografia-digital-2022.php" target="_blank" rel="noopener">INE Cartografía digital 2022</a>
+            · <a href="https://www.ine.gov.py/microdatos/license.php" target="_blank" rel="noopener">License</a>
+            · <a href="https://github.com/shinyanakashima/30daymapchallenge-2026day9-campo-ciudad" target="_blank" rel="noopener">GitHub</a>
+          </p>
+        </section>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

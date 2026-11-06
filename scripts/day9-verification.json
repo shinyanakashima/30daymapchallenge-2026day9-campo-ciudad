@@ -1,0 +1,29 @@
+{
+  "district_code": "1009",
+  "polygons": 28,
+  "counts": {
+    "1": 6,
+    "6": 22
+  },
+  "all_source_valid": true,
+  "district_valid": true,
+  "gap_or_excess_m2": 0.0,
+  "overlap_m2": 0.0,
+  "population": {
+    "urban": 3843,
+    "rural": 4288,
+    "total": 8131
+  },
+  "source_crs": "EPSG:4674",
+  "export_crs": "EPSG:4326",
+  "archive_sha256": "a9ff06b8397c8996253f291eecfeb5868d50d494cde29f5e9a5bea54e5527158",
+  "source_sha256": {
+    "Distritos_Alto Parana.geojson": "976239e0f88374c71370706a4d8f1ed88e8908fd2756dab141520439043f3032",
+    "Barrios Localidades_Alto Parana.geojson": "c6fa8114ae984e9f51df39f1fd52d39c5f5ca836ab9e07c8748a3f09cfae36d7"
+  },
+  "geoparquet_bytes": 29655,
+  "area_km2": {
+    "1": 7.593783096631864,
+    "6": 787.4078102764389
+  }
+}

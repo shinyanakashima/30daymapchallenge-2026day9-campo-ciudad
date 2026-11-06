@@ -1,0 +1,22 @@
+{
+  "name": "yguazu-urban-rural",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "node scripts/check-data.mjs"
+  },
+  "dependencies": {
+    "hyparquet": "^1.32.0",
+    "hyparquet-compressors": "^1.1.3",
+    "maplibre-gl": "^6.16.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6"
+  }
+}
