@@ -123,39 +123,121 @@ button:disabled { opacity: 0.45; cursor: default; }
 .map-wrap { grid-area: map; position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--outside); }
 
-/* 地図上の操作はひとつのカードにまとめる */
-.map-tools {
+/* ---- 地図上の操作 ---- */
+/* 表示範囲：右上（ズームボタンの左）の切り替え */
+.extent {
   position: absolute;
-  left: 12px;
-  top: 12px;
-  max-width: calc(100% - 64px);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 6px;
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  top: 10px;
+  right: 52px;
   z-index: 2;
-}
-.check {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px 0 8px;
-  font-size: 0.82rem;
-  border: 1px solid #c3c8d4;
-  border-radius: var(--radius);
-  background: #fff;
-  cursor: pointer;
-  white-space: nowrap;
+  padding: 3px;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
 }
-.check input { margin: 0; accent-color: var(--blue); width: 15px; height: 15px; }
-.tools-sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
-button.quiet { border-color: transparent; background: transparent; color: var(--blue); padding: 0 8px; }
-button.quiet:hover:not(:disabled) { background: var(--blue-soft); border-color: transparent; }
+.extent button {
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.extent button:hover:not(:disabled) { color: var(--blue); background: var(--blue-soft); }
+.extent button[aria-pressed="true"],
+.extent button[aria-pressed="true"]:hover { background: var(--blue); color: #fff; }
+
+/* レイヤー：左上のカード（凡例を兼ねる） */
+.layers {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 3;
+  width: 250px;
+  max-height: calc(100% - 60px);
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  font-size: 0.82rem;
+}
+.layers-head {
+  width: 100%;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:lang(ja) .layers-head { text-transform: none; letter-spacing: 0.02em; font-size: 0.8rem; }
+.layers-head:hover:not(:disabled) { color: var(--blue); }
+.chev {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  margin-top: -3px;
+  transition: transform 0.15s;
+}
+.layers.closed .chev { transform: rotate(-45deg); margin-top: 0; }
+.layers.closed .layers-body { display: none; }
+.layers-body { padding: 0 10px 8px; display: grid; gap: 2px; }
+.seg.base { display: flex; margin-bottom: 4px; }
+.seg.base button { flex: 1; height: 28px; font-size: 0.78rem; padding: 0 6px; }
+.layer {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.lsw { display: flex; align-items: center; gap: 3px; }
+.lname { display: grid; line-height: 1.25; }
+.lname small { color: var(--faint); font-size: 0.7rem; }
+/* トグルスイッチ */
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: #c9cdd8;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex: none;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+.switch:checked { background: var(--blue); }
+.switch:checked::after { transform: translateX(12px); }
+.switch:disabled { opacity: 0.45; cursor: default; }
 
 .status {
   position: absolute;
@@ -280,6 +362,7 @@ body[data-view="satellite"] .sw-building { background: #fff; box-shadow: 0 0 0 1
 .sv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .sv-list li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start; padding: 6px 0; border-top: 1px solid var(--line); }
 .sv-list li:first-child { border-top: 0; }
+.sv-num.small { width: 16px; height: 16px; font-size: 0.6rem; border-width: 1.5px; margin: 0; }
 .sv-num {
   width: 20px; height: 20px; border-radius: 50%;
   border: 2px solid var(--blue); color: var(--blue); background: #fff;
@@ -354,15 +437,17 @@ body[data-view="satellite"] .sw-building { background: #fff; box-shadow: 0 0 0 1
   .head .tag { display: none; }
   .head .lang button { height: 24px; min-width: 2.3em; padding: 0 6px; font-size: 0.72rem; }
   .map-wrap { height: 64vh; height: 64svh; min-height: 340px; }
-  .map-tools { left: 8px; top: 8px; max-width: calc(100% - 56px); padding: 5px; gap: 5px; }
-  .map-tools button, .check { height: 28px; font-size: 0.76rem; }
-  .map-tools .seg button { padding: 0 8px; }
-  .tools-sep { display: none; }
+  .layers { top: 8px; left: 8px; width: min(250px, calc(100% - 16px)); max-height: calc(100% - 56px); }
+  .layers.closed { width: auto; }
+  .layers-head { height: 32px; gap: 10px; }
+  .extent { top: 8px; right: 48px; }
+  .extent button { height: 24px; padding: 0 10px; font-size: 0.72rem; }
   .panel { border-left: 0; overflow: visible; padding: 16px 14px 24px; }
   .maplibregl-ctrl.credit { font-size: 9.5px; line-height: 1.3; padding: 2px 5px; margin: 0 4px 4px 0; max-width: calc(100vw - 96px); }
 }
 
 /* ごく狭い画面ではタイトルを省略せず折り返す */
 @media (max-width: 370px) {
+  .extent { top: 46px; }
   .head h1 { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; }
 }

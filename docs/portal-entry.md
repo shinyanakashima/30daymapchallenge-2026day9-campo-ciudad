@@ -15,8 +15,8 @@
 
 ## 説明
 
-- 日本語：パラグアイYguazú地区を2022年国勢調査の都市・農村で塗り分ける。地区人口8,131人の47%が小さな都市区域に暮らす。建物の輪郭と衛星写真を重ねて比べられる。
-- English: Urban and rural census areas of Yguazú, Paraguay, in 2022. Of the district's 8,131 residents, 47% live in its small urban area. Building footprints and a satellite image can be overlaid.
+- 日本語：パラグアイYguazú地区を2022年国勢調査の都市・農村で塗り分ける。人口8,131人は都市と農村でほぼ半々。建物、道路、衛星写真を重ね、道路からストリートビューも開ける。
+- English: Urban and rural census areas of Yguazú, Paraguay, in 2022. Its 8,131 residents are split almost evenly between the two. Overlay buildings, roads and a satellite image, and open Street View from the roads.
 
 ## サムネイル代替テキスト
 
@@ -29,7 +29,7 @@
 {
   "id": "yguazu-urban-rural",
   "title": "Yguazúの都市と農村",
-  "description": "パラグアイYguazú地区を2022年国勢調査の都市・農村で塗り分ける。地区人口8,131人の47%が小さな都市区域に暮らす。建物の輪郭と衛星写真を重ねて比べられる。",
+  "description": "パラグアイYguazú地区を2022年国勢調査の都市・農村で塗り分ける。人口8,131人は都市と農村でほぼ半々。建物、道路、衛星写真を重ね、道路からストリートビューも開ける。",
   "status": "published",
   "thumbnail": "images/2026/works/yguazu-urban-rural.jpg",
   "thumbnailAlt": "Yguazúの都市と農村の画面",
@@ -43,7 +43,7 @@
   "verifiedAt": "2026-11-09",
   "en": {
     "title": "Urban and Rural in Yguazú",
-    "description": "Urban and rural census areas of Yguazú, Paraguay, in 2022. Of the district's 8,131 residents, 47% live in its small urban area. Building footprints and a satellite image can be overlaid.",
+    "description": "Urban and rural census areas of Yguazú, Paraguay, in 2022. Its 8,131 residents are split almost evenly between the two. Overlay buildings, roads and a satellite image, and open Street View from the roads.",
     "tags": ["MapLibre", "GeoParquet", "INE Paraguay", "Overture Maps", "Sentinel-2"],
     "thumbnailAlt": "Screenshot of Urban and Rural in Yguazú"
   }

@@ -1,6 +1,6 @@
 # Urban and Rural in Yguazú / Yguazúの都市と農村
 
-30DayMapChallenge 2026 Day 9「Urban-rural」の作品。パラグアイ Alto Paraná 県 Yguazú 地区（地区コード1009）を、2022年国勢調査の都市・農村区分で2色に塗り分け、それぞれの人口を示す。地区人口8,131人のうち47.26%（3,843人）が、地図上では小さな都市区域に暮らしている。
+30DayMapChallenge 2026 Day 9「Urban-rural」の作品。パラグアイ Alto Paraná 県 Yguazú 地区（地区コード1009）を、2022年国勢調査の都市・農村区分で2色に塗り分け、それぞれの人口を示す。地区人口8,131人は、都市区域に3,843人（47.26%）、農村区域に4,288人（52.74%）と、ほぼ半々に分かれている。
 
 統計上の線引きを別の視点と比べるため、Overture Maps の建物の輪郭（8,571棟）と Sentinel-2 の衛星写真（2026年9月26日）を重ねられる。建物の32.7%が都市区域にあり、残りは農村区域の幹線道路沿いや都市区域のすぐ外側に集まっている。
 
@@ -9,7 +9,7 @@
 
 ![画面](docs/screenshot.png)
 
-*Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations. Almost half of the district's 8,131 residents live in the small urban area. Building footprints from Overture Maps and a Sentinel-2 satellite image can be overlaid. English is the default; Spanish and Japanese are available from the header (or `?lang=es` / `?lang=ja`).*
+*Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations. The district's 8,131 residents are split almost evenly between the urban (3,843) and rural (4,288) census areas. Building footprints from Overture Maps and a Sentinel-2 satellite image can be overlaid. English is the default; Spanish and Japanese are available from the header (or `?lang=es` / `?lang=ja`).*
 
 ## 表示しているもの
 

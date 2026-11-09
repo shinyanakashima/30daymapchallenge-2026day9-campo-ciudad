@@ -79,6 +79,8 @@ let view: "census" | "satellite" = "satellite";
 let showBuildings = true;
 let roads: RoadCollection | null = null;
 let showRoads = true;
+let showAreas = true;
+let showPoints = true;
 // 言語切替時に開いているポップアップを描き直すための関数
 let popupRefresh: (() => void) | null = null;
 
@@ -185,6 +187,7 @@ function renderViewList() {
     go.textContent = t().svShow;
     go.onclick = () => {
       map.flyTo({ center: [p.lng, p.lat], zoom: 15 });
+      setExtent(null);
       openViewPopup(p.n);
     };
     li.append(num, body, go);
@@ -293,7 +296,8 @@ map.addControl(new CreditControl(), "bottom-right");
 
 function fitPadding() {
   const small = window.matchMedia("(max-width: 760px)").matches;
-  return small ? { top: 100, bottom: 52, left: 16, right: 48 } : { top: 72, bottom: 56, left: 48, right: 72 };
+  // レイヤー欄（左上、広い画面では開いている）と表示範囲（右上）を避ける
+  return small ? { top: 52, bottom: 70, left: 16, right: 48 } : { top: 56, bottom: 48, left: 280, right: 56 };
 }
 
 let districtBounds: LngLatBoundsLike | null = null;
@@ -409,6 +413,28 @@ function openRoadPopup(roadId: number, lng: number, lat: number) {
   popupRefresh = () => openRoadPopup(roadId, p.lng, p.lat);
 }
 let hoveredRoad: number | null = null;
+
+// 都市・農村区域の塗りと境界線（地区の外周線は常に表示）
+function applyAreas() {
+  for (const id of ["area-fill", "area-line"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showAreas ? "visible" : "none");
+  }
+  ($("show-areas") as HTMLInputElement).checked = showAreas;
+}
+
+function applyPoints() {
+  for (const id of ["viewpoints", "viewpoints-label"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showPoints ? "visible" : "none");
+  }
+  ($("show-points") as HTMLInputElement).checked = showPoints;
+}
+
+// 表示範囲ボタンの選択状態。利用者が地図を動かしたら解除する
+type Extent = "urban" | "district" | "paraguay" | null;
+const EXTENT_BUTTONS: Record<Exclude<Extent, null>, string> = { urban: "zoom-urban", district: "reset", paraguay: "locate" };
+function setExtent(e: Extent) {
+  for (const [k, id] of Object.entries(EXTENT_BUTTONS)) $(id).setAttribute("aria-pressed", String(k === e));
+}
 
 function applyRoads() {
   for (const id of ["roads", "roads-hit"]) {
@@ -719,17 +745,37 @@ async function start() {
   map.on("mouseenter", "roads-hit", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "roads-hit", () => (map.getCanvas().style.cursor = ""));
 
-  for (const id of ["zoom-urban", "reset", "locate", "view-census", "view-satellite"]) ($(id) as HTMLButtonElement).disabled = false;
+  for (const id of ["zoom-urban", "reset", "locate", "view-census", "view-satellite", "show-areas", "show-points"]) {
+    ($(id) as HTMLButtonElement | HTMLInputElement).disabled = false;
+  }
   $("locate").onclick = () => {
     popup?.remove();
     setSelected(null);
     map.fitBounds(PARAGUAY_BOUNDS, { padding: fitPadding() });
+    setExtent("paraguay");
   };
-  $("zoom-urban").onclick = () => urbanBounds && map.fitBounds(urbanBounds, { padding: fitPadding(), maxZoom: 15 });
+  $("zoom-urban").onclick = () => {
+    if (urbanBounds) map.fitBounds(urbanBounds, { padding: fitPadding(), maxZoom: 15 });
+    setExtent("urban");
+  };
   $("reset").onclick = () => {
     popup?.remove();
     setSelected(null);
     showWhole();
+    setExtent("district");
+  };
+  // 利用者のドラッグ・ズームで選択を外す（ボタンによる移動は originalEvent を持たない）
+  map.on("movestart", (ev) => {
+    if ((ev as { originalEvent?: Event }).originalEvent) setExtent(null);
+  });
+  $("show-areas").onchange = (ev) => {
+    showAreas = (ev.target as HTMLInputElement).checked;
+    applyAreas();
+  };
+  $("show-points").onchange = (ev) => {
+    showPoints = (ev.target as HTMLInputElement).checked;
+    if (!showPoints && popup?.getElement()?.querySelector(".pop-sv")) popup.remove();
+    applyPoints();
   };
   $("view-census").onclick = () => {
     view = "census";
@@ -782,6 +828,18 @@ async function start() {
   // 検証用：読み込んだ値を外部から確認できるようにする
   (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), roads: roads?.features.length ?? 0, svRoads: roads?.features.filter((f) => f.properties.sv).length ?? 0, bbox: [w, s, e, n] };
   document.body.dataset.ready = "true";
+}
+
+// レイヤー欄の開閉。小さな画面では最初は閉じておく
+{
+  const btn = $("layers-toggle");
+  const box = $("layers");
+  const setOpen = (open: boolean) => {
+    btn.setAttribute("aria-expanded", String(open));
+    box.classList.toggle("closed", !open);
+  };
+  setOpen(!window.matchMedia("(max-width: 760px)").matches);
+  btn.onclick = () => setOpen(btn.getAttribute("aria-expanded") !== "true");
 }
 
 // 言語切替（EN / ES / 日本語）
