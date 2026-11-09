@@ -1,4 +1,10 @@
-export type Lang = "en" | "ja";
+export type Lang = "en" | "es" | "ja";
+
+export const LANGS: { code: Lang; label: string }[] = [
+  { code: "en", label: "EN" },
+  { code: "es", label: "ES" },
+  { code: "ja", label: "日本語" },
+];
 
 export const TEXT = {
   en: {
@@ -49,8 +55,57 @@ export const TEXT = {
     errorTitle: "The data could not be loaded.",
     errorBody: "No map or numbers are shown. Reload the page to try again.",
     retry: "Reload",
-    langButton: "日本語",
     popupShare: "of the district population",
+  },
+  es: {
+    docTitle: "Urbano y rural en Yguazú — Censo 2022",
+    title: "Urbano y rural en Yguazú",
+    place: "Yguazú / Alto Paraná / Paraguay / Censo 2022",
+    lead: "Casi la mitad de los habitantes del distrito vive en su área urbana censal: la pequeña zona roja del mapa.",
+    popTitle: "Población, Censo 2022",
+    bldTitle: "Edificaciones",
+    bldBarLabel: "Proporción de edificaciones",
+    bldNote: "Se cuentan huellas de edificaciones, no personas ni hogares. Cada edificación se asigna al área que contiene un punto de su interior. Puede haber edificaciones no registradas.",
+    bldLoading: "Cargando edificaciones…",
+    bldError: "No se pudieron cargar las edificaciones. El mapa censal no se ve afectado.",
+    legendBuilding: "Edificación",
+    viewCensus: "Colores censales",
+    viewSatellite: "Imagen satelital",
+    showBuildings: "Edificaciones",
+    note4: "La imagen satelital es una imagen en color verdadero de Sentinel-2 del 26 de septiembre de 2026 (píxeles de 10 m) y se muestra solo como fondo. Las áreas urbana y rural no se obtuvieron de ella.",
+    srcSatellite: "Imagen satelital: contiene datos modificados de Copernicus Sentinel 2026 (Sentinel-2 L2A, 26 de septiembre de 2026), obtenidos a través de Element 84 Earth Search; reproyectados, unidos en mosaico y divididos en teselas.",
+    srcBuildings: "Edificaciones: Overture Maps Foundation, versión 2026-10-21.0 (ODbL), incluye © colaboradores de OpenStreetMap, Google Open Buildings (CC BY 4.0) y Microsoft ML Building Footprints (ODbL); recortadas al distrito y asignadas al área urbana o rural.",
+    attrBuildings: "Edificaciones: Overture Maps, © colaboradores de OpenStreetMap",
+    attrSatellite: "Copernicus Sentinel-2 (2026)",
+    urban: "Urbana",
+    rural: "Rural",
+    total: "Total",
+    people: "personas",
+    barLabel: "Proporción de la población",
+    barNote: "La longitud de las barras indica población, no superficie.",
+    ofDistrict: "de la población del distrito",
+    legendUrban: "Área urbana censal",
+    legendRural: "Área rural censal",
+    legendOutside: "Fuera del distrito",
+    zoomUrban: "Acercar al área urbana",
+    reset: "Todo el distrito",
+    hint: "Haga clic o toque un área para ver su población.",
+    notesTitle: "Sobre este mapa",
+    note1: "Lo urbano y lo rural siguen la clasificación del Instituto Nacional de Estadística (INE) en el Censo 2022. Son categorías estadísticas, no zonas edificadas detectadas a partir de imágenes ni de la cobertura del suelo.",
+    note2: "Los límites son límites censales de referencia del INE. No definen límites legales.",
+    note3: "La población corresponde solo a las áreas urbana y rural unificadas; no se distribuye entre las unidades más pequeñas de origen.",
+    sourceTitle: "Fuente",
+    source:
+      "Instituto Nacional de Estadística (INE), Paraguay. Censo Nacional de Población y Viviendas 2022: Cartografía digital 2022 (Alto Paraná) y “Estructura de la población por edad y sexo”, cuadros A1 y A13.",
+    processing:
+      "Procesamiento: las 28 áreas censales del distrito 1009 se unificaron en 1 área urbana y 1 rural, y se reproyectaron de EPSG:4674 a WGS 84. Descarga y procesamiento: noviembre de 2026.",
+    license: "Uso conforme a la licencia de uso de información pública de Paraguay. No es un producto oficial del INE.",
+    attribution: "Datos: INE Paraguay, Censo 2022",
+    loading: "Cargando áreas censales…",
+    errorTitle: "No se pudieron cargar los datos.",
+    errorBody: "No se muestran el mapa ni las cifras. Vuelva a cargar la página para intentarlo de nuevo.",
+    retry: "Volver a cargar",
+    popupShare: "de la población del distrito",
   },
   ja: {
     docTitle: "Yguazúの都市と農村 — 2022年国勢調査",
@@ -100,7 +155,6 @@ export const TEXT = {
     errorTitle: "データを読み込めませんでした。",
     errorBody: "地図と数値は表示していません。ページを再読み込みしてください。",
     retry: "再読み込み",
-    langButton: "English",
     popupShare: "（地区人口比）",
   },
 } as const;

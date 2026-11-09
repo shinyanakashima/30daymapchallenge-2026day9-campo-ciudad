@@ -5,11 +5,11 @@
 統計上の線引きを別の視点と比べるため、Overture Maps の建物の輪郭（8,571棟）と Sentinel-2 の衛星写真（2026年9月26日）を重ねられる。建物の32.7%が都市区域にあり、残りは農村区域の幹線道路沿いや都市区域のすぐ外側に集まっている。
 
 - 公開URL：https://shinyanakashima.github.io/30daymapchallenge-2026day9-campo-ciudad/
-- 日本語表示：画面右上の「日本語」ボタン、または `?lang=ja`
+- 表示言語：英語（初期表示）・スペイン語・日本語。画面右上の EN / ES / 日本語 で切り替える。`?lang=es`・`?lang=ja` でも指定できる。スペイン語では数値を 8.131、47,26 % と表記する。
 
 ![画面](docs/screenshot.png)
 
-*Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations. Almost half of the district's 8,131 residents live in the small urban area. Building footprints from Overture Maps and a Sentinel-2 satellite image can be overlaid. English is the default; Japanese is available from the header button.*
+*Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations. Almost half of the district's 8,131 residents live in the small urban area. Building footprints from Overture Maps and a Sentinel-2 satellite image can be overlaid. English is the default; Spanish and Japanese are available from the header (or `?lang=es` / `?lang=ja`).*
 
 ## 表示しているもの
 

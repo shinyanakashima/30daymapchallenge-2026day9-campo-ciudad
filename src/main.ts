@@ -14,7 +14,7 @@ import {
   type AreaType,
   type BuildingCollection,
 } from "./data";
-import { TEXT, type Lang, type Strings } from "./i18n";
+import { LANGS, TEXT, type Lang, type Strings } from "./i18n";
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -36,10 +36,11 @@ const SATELLITE_BOUNDS: [number, number, number, number] = [-55.359, -25.6235, -
 // ---- 言語 ----
 function initialLang(): Lang {
   const q = new URLSearchParams(location.search).get("lang");
-  if (q === "ja" || q === "en") return q;
+  const known = (v: string | null): v is Lang => LANGS.some((l) => l.code === v);
+  if (known(q)) return q;
   try {
     const saved = localStorage.getItem("yguazu-lang");
-    if (saved === "ja" || saved === "en") return saved;
+    if (known(saved)) return saved;
   } catch {
     /* ストレージが使えない環境では既定値 */
   }
@@ -49,9 +50,14 @@ let lang: Lang = initialLang();
 const t = (): Strings => TEXT[lang];
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const fmt = (n: number) => n.toLocaleString("en-US");
-const pctFmt = (x: number) => `${x.toFixed(2)}%`;
-const pct1 = (x: number) => `${x.toFixed(1)}%`;
+// 数値表記：スペイン語は 8.131 / 47,26 %（4桁でも区切る）、英語・日本語は 8,131 / 47.26%
+const fmt = (n: number) => {
+  const en = Math.round(n).toLocaleString("en-US");
+  return lang === "es" ? en.replace(/,/g, ".") : en;
+};
+const pctN = (x: number, d: number) => (lang === "es" ? `${x.toFixed(d).replace(".", ",")} %` : `${x.toFixed(d)}%`);
+const pctFmt = (x: number) => pctN(x, 2);
+const pct1 = (x: number) => pctN(x, 1);
 
 let areas: AreaCollection | null = null;
 let buildings: BuildingCollection | null = null;
@@ -96,8 +102,9 @@ function renderText() {
   document.querySelectorAll<HTMLElement>("[data-t]").forEach((el) => {
     el.textContent = s[el.dataset.t as keyof Strings];
   });
-  $("lang").textContent = s.langButton;
-  $("lang").setAttribute("lang", lang === "en" ? "ja" : "en");
+  document.querySelectorAll<HTMLButtonElement>("#lang button").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+  });
   renderNumbers();
   renderBuildings();
   renderStatus();
@@ -211,7 +218,7 @@ map.addControl(new CreditControl(), "bottom-right");
 
 function fitPadding() {
   const small = window.matchMedia("(max-width: 760px)").matches;
-  return small ? { top: 84, bottom: 52, left: 16, right: 48 } : { top: 96, bottom: 56, left: 48, right: 72 };
+  return small ? { top: 128, bottom: 52, left: 16, right: 48 } : { top: 96, bottom: 56, left: 48, right: 72 };
 }
 
 let districtBounds: LngLatBoundsLike | null = null;
@@ -296,9 +303,10 @@ function applyView() {
   map.setPaintProperty(
     "building-points",
     "circle-color",
-    sat ? "#ffffff" : ["case", isUrban, C.buildingUrban, C.buildingRural],
+    // 広域では都市の点を濃い赤にして、赤い都市区域が点で白く埋もれないようにする
+    sat ? "#ffffff" : ["case", isUrban, C.redDark, C.buildingRural],
   );
-  map.setPaintProperty("building-points", "circle-opacity", sat ? 0.8 : ["case", isUrban, 0.75, 0.6]);
+  map.setPaintProperty("building-points", "circle-opacity", sat ? 0.8 : ["case", isUrban, 0.55, 0.6]);
   $("view-census").setAttribute("aria-pressed", String(!sat));
   $("view-satellite").setAttribute("aria-pressed", String(sat));
   document.body.dataset.view = view;
@@ -473,15 +481,24 @@ async function start() {
   document.body.dataset.ready = "true";
 }
 
-$("lang").onclick = () => {
-  lang = lang === "en" ? "ja" : "en";
-  try {
-    localStorage.setItem("yguazu-lang", lang);
-  } catch {
-    /* 無視 */
-  }
-  renderText();
-};
+// 言語切替（EN / ES / 日本語）
+for (const l of LANGS) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.lang = l.code;
+  b.lang = l.code;
+  b.textContent = l.label;
+  b.onclick = () => {
+    lang = l.code;
+    try {
+      localStorage.setItem("yguazu-lang", lang);
+    } catch {
+      /* 無視 */
+    }
+    renderText();
+  };
+  $("lang").append(b);
+}
 
 renderText();
 start();

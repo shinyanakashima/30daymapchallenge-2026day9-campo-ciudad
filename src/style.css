@@ -51,6 +51,7 @@ button:hover:not(:disabled) { border-color: var(--ink); }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 button:disabled { opacity: 0.45; cursor: default; }
 .lang { flex: none; }
+.lang button { padding: 5px 9px; min-width: 2.6em; }
 
 .map-wrap { grid-area: map; position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--outside); }
@@ -70,7 +71,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .seg { display: inline-flex; }
 .seg button { border-radius: 0; }
 .seg button:first-child { border-radius: 4px 0 0 4px; }
-.seg button:last-child { border-radius: 0 4px 4px 0; border-left: 0; }
+.seg button + button { border-left: 0; }
+.seg button:last-child { border-radius: 0 4px 4px 0; }
 .seg button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
 .check {
   display: inline-flex;
