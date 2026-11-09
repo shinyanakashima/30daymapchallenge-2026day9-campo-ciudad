@@ -1,0 +1,34 @@
+{
+  "retrieved": "2026-11-09",
+  "buildings": {
+    "source": "Overture Maps Foundation, release 2026-10-21.0, theme=buildings/type=building",
+    "license": "ODbL-1.0 (includes OpenStreetMap ODbL, Google Open Buildings CC BY 4.0, Microsoft ML Buildings ODbL)",
+    "bbox_query": [-55.329, -25.5935, -54.8915, -25.2485],
+    "bbox_rows": 31048,
+    "bbox_rows_by_dataset": { "Google Open Buildings": 12451, "Microsoft ML Buildings": 10114, "OpenStreetMap": 8483 },
+    "raw_sha256": "d30bf39aab9b056323899ad59f1b873c9ed780de931456c04651df22a237d5a5",
+    "assignment": "point_on_surface inside the urban or rural area of day9-yguazu.parquet",
+    "kept": 8571,
+    "by_area": { "urban": 2805, "rural": 5766 },
+    "by_source": { "google": 3691, "microsoft": 2206, "osm": 2674 },
+    "output": "public/data/day9-yguazu-buildings.parquet",
+    "output_sha256": "5cbc9d3611085cd2a55997fdac8ddf68227c601e3a7fad793c2503a3328255bc",
+    "output_bytes": 315148
+  },
+  "satellite": {
+    "source": "Copernicus Sentinel-2 L2A (collection sentinel-2-c1-l2a, Element 84 Earth Search), TCI true colour",
+    "acquired": "2026-09-26",
+    "items": [
+      "S2B_T21JXM_20260926T134226_L2A",
+      "S2B_T21JYM_20260926T134226_L2A",
+      "S2B_T21JXN_20260926T134226_L2A",
+      "S2B_T21JYN_20260926T134226_L2A"
+    ],
+    "cloud_cover_percent": [0.0, 0.0, 0.0, 0.0],
+    "district_pixels_uncovered": 0,
+    "note": "2026-01-22 was tested first but left 8.1% of the district without data (swath edge).",
+    "processing": "bilinear reprojection to EPSG:3857 on the z14 pixel grid, mosaic, gamma 0.85, JPEG q80 XYZ tiles z9-14",
+    "tiles": 710,
+    "tiles_mb": 6.2
+  }
+}

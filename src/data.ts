@@ -19,6 +19,7 @@ export type AreaCollection = FeatureCollection<Polygon | MultiPolygon, AreaProps
 const compressors = { ZSTD: (input: Uint8Array, outputLength: number) => decompressZstd(input, new Uint8Array(outputLength)) };
 
 export const DATA_URL = `${import.meta.env.BASE_URL}data/day9-yguazu.parquet`;
+export const BUILDINGS_URL = `${import.meta.env.BASE_URL}data/day9-yguazu-buildings.parquet`;
 
 // GeoParquet の CRS が WGS84 経緯度（x=経度, y=緯度）であることを確認する。
 // crs 省略時は仕様上 OGC:CRS84。
@@ -36,20 +37,24 @@ function checkGeoMetadata(geoJson: string | undefined): void {
   if (!ok) throw new Error("Geometry CRS is not WGS84 longitude/latitude");
 }
 
-export async function loadAreas(url = DATA_URL): Promise<AreaCollection> {
+// GeoParquet を取得して行を返す。geometry は WKB のバイト列のまま。
+// geoparquet:false・utf8:false で hyparquet の自動変換を止め、自前で復号する
+// （UTF8 注釈付きの文字列列は utf8:false でも文字列のまま返る）
+async function readGeoParquet(url: string): Promise<Record<string, unknown>[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status} while loading ${url}`);
   const file = await res.arrayBuffer();
-
-  // geoparquet:false・utf8:false で WKB のバイト列をそのまま受け取り、自前で復号する
-  // （UTF8 注釈付きの文字列列は utf8:false でも文字列のまま返る）
   const metadata = parquetMetadata(file, { geoparquet: false });
   checkGeoMetadata(metadata.key_value_metadata?.find((kv) => kv.key === "geo")?.value);
-  const rows = await parquetReadObjects({ file, metadata, compressors, utf8: false });
+  return parquetReadObjects({ file, metadata, compressors, utf8: false });
+}
+
+export async function loadAreas(url = DATA_URL): Promise<AreaCollection> {
+  const rows = await readGeoParquet(url);
 
   const features: Feature<Polygon | MultiPolygon, AreaProps>[] = rows.map((row, i) => {
     const type = row.area_type;
-    if (type !== "urban" && type !== "rural") throw new Error(`Unexpected area_type: ${type}`);
+    if (type !== "urban" && type !== "rural") throw new Error(`Unexpected area_type: ${String(type)}`);
     const population = Number(row.population);
     if (!Number.isInteger(population) || population <= 0) throw new Error(`Invalid population for ${type}`);
     if (!(row.geometry instanceof Uint8Array)) throw new Error("Geometry column is not WKB bytes");
@@ -72,6 +77,25 @@ export async function loadAreas(url = DATA_URL): Promise<AreaCollection> {
 
   const types = features.map((f) => f.properties.area_type).sort().join(",");
   if (types !== "rural,urban") throw new Error(`Expected one urban and one rural row, got: ${types}`);
+  return { type: "FeatureCollection", features };
+}
+
+export type BuildingProps = { area_type: AreaType; source: "osm" | "google" | "microsoft" };
+export type BuildingCollection = FeatureCollection<Polygon | MultiPolygon, BuildingProps>;
+
+export async function loadBuildings(url = BUILDINGS_URL): Promise<BuildingCollection> {
+  const rows = await readGeoParquet(url);
+  if (rows.length === 0) throw new Error("No buildings in file");
+  const features = rows.map((row): Feature<Polygon | MultiPolygon, BuildingProps> => {
+    const type = row.area_type;
+    const source = row.source;
+    if (type !== "urban" && type !== "rural") throw new Error(`Unexpected area_type: ${String(type)}`);
+    if (source !== "osm" && source !== "google" && source !== "microsoft") throw new Error(`Unexpected source: ${String(source)}`);
+    if (!(row.geometry instanceof Uint8Array)) throw new Error("Geometry column is not WKB bytes");
+    const geometry = wkbToGeometry(row.geometry);
+    checkBounds(geometry);
+    return { type: "Feature", geometry, properties: { area_type: type, source } };
+  });
   return { type: "FeatureCollection", features };
 }
 
@@ -132,4 +156,14 @@ export function districtOutline(fc: AreaCollection): FeatureCollection<MultiLine
     if (cur) lines.push(cur);
   }
   return { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "MultiLineString", coordinates: lines } }] };
+}
+
+// 地区外を覆うマスク：外側の大きな矩形に、地区の外周リングを穴として開ける
+export function outsideMask(fc: AreaCollection): FeatureCollection<Polygon> {
+  const outline = districtOutline(fc).features[0].geometry.coordinates;
+  // 外周線は閉じたリングとして得られる（都市は地区内部の穴なので共有辺で消える）
+  const rings = outline.filter((l) => l.length > 3 && l[0][0] === l[l.length - 1][0] && l[0][1] === l[l.length - 1][1]);
+  if (rings.length === 0) return { type: "FeatureCollection", features: [] };
+  const world: Position[] = [[-80, -60], [-30, -60], [-30, 10], [-80, 10], [-80, -60]];
+  return { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [world, ...rings] } }] };
 }

@@ -4,19 +4,34 @@ import "maplibre-gl/dist/maplibre-gl.css";
 // MapLibre 6 の worker は別ファイル。ビルド後のサブパスでも解決できるよう Vite に URL を管理させる
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "./style.css";
-import { loadAreas, bboxOf, districtOutline, type AreaCollection, type AreaType } from "./data";
+import {
+  loadAreas,
+  loadBuildings,
+  bboxOf,
+  districtOutline,
+  outsideMask,
+  type AreaCollection,
+  type AreaType,
+  type BuildingCollection,
+} from "./data";
 import { TEXT, type Lang, type Strings } from "./i18n";
 
 maplibregl.setWorkerUrl(workerUrl);
 
-const COLORS = {
-  urban: "#d4551c",
-  urbanLine: "#8f3108",
-  rural: "#e6e3c8",
-  ruralLine: "#a9a37a",
-  outside: "#d9d9d6",
-  boundary: "#3b3a36",
+// パラグアイの国旗の赤・白・青に寄せた配色（国旗・国章そのものは使わない）
+const C = {
+  red: "#d52b1e",
+  redDark: "#8e1b12",
+  blue: "#0038a8",
+  rural: "#fbfaf6",
+  ruralLine: "#9aa6c4",
+  outside: "#d3d6dd",
+  buildingRural: "#0038a8",
+  buildingUrban: "#ffffff",
 };
+const SATELLITE_TILES = `${new URL(import.meta.env.BASE_URL, location.href).href}tiles/s2-20260926/{z}/{x}/{y}.jpg`;
+// タイルを作った範囲（地区の外接矩形 + 0.03°）
+const SATELLITE_BOUNDS: [number, number, number, number] = [-55.359, -25.6235, -54.8615, -25.2185];
 
 // ---- 言語 ----
 function initialLang(): Lang {
@@ -36,11 +51,16 @@ const t = (): Strings => TEXT[lang];
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const fmt = (n: number) => n.toLocaleString("en-US");
 const pctFmt = (x: number) => `${x.toFixed(2)}%`;
+const pct1 = (x: number) => `${x.toFixed(1)}%`;
 
 let areas: AreaCollection | null = null;
+let buildings: BuildingCollection | null = null;
+let buildingError: unknown = null;
 let selected: number | null = null;
 let popup: maplibregl.Popup | null = null;
 let loadError: unknown = null;
+let view: "census" | "satellite" = "census";
+let showBuildings = true;
 
 function stats() {
   if (!areas) return null;
@@ -49,6 +69,24 @@ function stats() {
   const rural = byType("rural");
   const total = urban + rural;
   return { urban, rural, total, pu: (urban / total) * 100, pr: (rural / total) * 100 };
+}
+
+function buildingStats() {
+  if (!buildings) return null;
+  let urban = 0;
+  for (const f of buildings.features) if (f.properties.area_type === "urban") urban++;
+  const total = buildings.features.length;
+  const rural = total - urban;
+  return { urban, rural, total, pu: (urban / total) * 100, pr: (rural / total) * 100 };
+}
+
+function setBar(prefix: string, pu: number, pr: number, label: string, note: string, f: (x: number) => string) {
+  const s = t();
+  $(`${prefix}-urban`).style.width = `${pu}%`;
+  $(`${prefix}-rural`).style.width = `${pr}%`;
+  $(`${prefix}-urban`).textContent = f(pu);
+  $(`${prefix}-rural`).textContent = f(pr);
+  $(prefix).setAttribute("aria-label", `${label}: ${s.urban} ${f(pu)}, ${s.rural} ${f(pr)}. ${note}`);
 }
 
 function renderText() {
@@ -61,28 +99,43 @@ function renderText() {
   $("lang").textContent = s.langButton;
   $("lang").setAttribute("lang", lang === "en" ? "ja" : "en");
   renderNumbers();
+  renderBuildings();
   renderStatus();
-  attributionEl && (attributionEl.textContent = s.attribution);
+  renderCredit();
   if (popup && selected !== null) openPopupFor(selected, popup.getLngLat());
 }
 
 function renderNumbers() {
   const st = stats();
   if (!st) return;
+  const s = t();
   $("pop-urban").textContent = fmt(st.urban);
   $("pop-rural").textContent = fmt(st.rural);
   $("pop-total").textContent = fmt(st.total);
   $("pct-urban").textContent = pctFmt(st.pu);
   $("pct-rural").textContent = pctFmt(st.pr);
-  $("bar-urban").style.width = `${st.pu}%`;
-  $("bar-rural").style.width = `${st.pr}%`;
-  $("bar-urban").textContent = pctFmt(st.pu);
-  $("bar-rural").textContent = pctFmt(st.pr);
+  setBar("bar", st.pu, st.pr, s.barLabel, s.barNote, pctFmt);
+}
+
+function renderBuildings() {
   const s = t();
-  $("bar").setAttribute(
-    "aria-label",
-    `${s.barLabel}: ${s.urban} ${pctFmt(st.pu)}, ${s.rural} ${pctFmt(st.pr)}. ${s.barNote}`,
-  );
+  const status = $("bld-status");
+  const b = buildingStats();
+  if (b) {
+    status.hidden = true;
+    $("bld-numbers").hidden = false;
+    $("bld-chart").hidden = false;
+    $("bld-urban").textContent = fmt(b.urban);
+    $("bld-rural").textContent = fmt(b.rural);
+    $("bld-total").textContent = fmt(b.total);
+    $("bld-pct-urban").textContent = pct1(b.pu);
+    $("bld-pct-rural").textContent = pct1(b.pr);
+    setBar("bld-bar", b.pu, b.pr, s.bldBarLabel, s.bldNote, pct1);
+  } else {
+    status.hidden = false;
+    status.className = buildingError ? "bld-status error" : "bld-status";
+    status.textContent = buildingError ? s.bldError : loadError ? "" : s.bldLoading;
+  }
 }
 
 function renderStatus() {
@@ -118,7 +171,7 @@ const map = new maplibregl.Map({
   style: {
     version: 8,
     sources: {},
-    layers: [{ id: "bg", type: "background", paint: { "background-color": COLORS.outside } }],
+    layers: [{ id: "bg", type: "background", paint: { "background-color": C.outside } }],
   },
   center: [-55.11, -25.42],
   zoom: 9,
@@ -134,23 +187,31 @@ map.keyboard.disableRotation();
 map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
-// クレジットは地図上に常時表示する
-let attributionEl: HTMLElement | null = null;
+// クレジットは地図上に常時表示する（表示中の層に合わせて増やす）
+let creditEl: HTMLElement | null = null;
 class CreditControl implements maplibregl.IControl {
   onAdd() {
     const el = document.createElement("div");
     el.className = "maplibregl-ctrl credit";
-    attributionEl = el;
-    el.textContent = t().attribution;
+    creditEl = el;
+    renderCredit();
     return el;
   }
   onRemove() {}
+}
+function renderCredit() {
+  if (!creditEl) return;
+  const s = t();
+  const parts = [s.attribution];
+  if (showBuildings && buildings) parts.push(s.attrBuildings);
+  if (view === "satellite") parts.push(s.attrSatellite);
+  creditEl.textContent = parts.join(" · ");
 }
 map.addControl(new CreditControl(), "bottom-right");
 
 function fitPadding() {
   const small = window.matchMedia("(max-width: 760px)").matches;
-  return small ? { top: 24, bottom: 36, left: 20, right: 52 } : { top: 48, bottom: 56, left: 48, right: 72 };
+  return small ? { top: 84, bottom: 52, left: 16, right: 48 } : { top: 96, bottom: 56, left: 48, right: 72 };
 }
 
 let districtBounds: LngLatBoundsLike | null = null;
@@ -186,10 +247,19 @@ function openPopupFor(id: number, lngLat: maplibregl.LngLatLike) {
   n.textContent = `${fmt(p.population)} ${s.people}`;
   const r = document.createElement("div");
   r.textContent = `${pctFmt(share)} ${s.popupShare}`;
+  box.append(h, n, r);
+  const b = buildingStats();
+  if (b) {
+    const bl = document.createElement("div");
+    bl.className = "pop-bld";
+    const count = p.area_type === "urban" ? b.urban : b.rural;
+    bl.textContent = `${s.bldTitle}: ${fmt(count)}`;
+    box.append(bl);
+  }
   const y = document.createElement("div");
   y.className = "pop-year";
   y.textContent = `INE, ${p.census_year}`;
-  box.append(h, n, r, y);
+  box.append(y);
   popup?.remove();
   popup = new maplibregl.Popup({ closeButton: true, maxWidth: "240px", focusAfterOpen: false })
     .setLngLat(lngLat)
@@ -200,17 +270,78 @@ function openPopupFor(id: number, lngLat: maplibregl.LngLatLike) {
   });
 }
 
+const isUrban: ExpressionSpecification = ["==", ["get", "area_type"], "urban"];
+const isSelected: ExpressionSpecification = ["boolean", ["feature-state", "selected"], false];
+
+// 表示モードに合わせて塗り・線・マスクの見た目を切り替える
+function applyView() {
+  if (!map.getLayer("area-fill")) return;
+  const sat = view === "satellite";
+  map.setLayoutProperty("satellite", "visibility", sat ? "visible" : "none");
+  map.setLayoutProperty("outside-mask", "visibility", sat ? "visible" : "none");
+  map.setPaintProperty("area-fill", "fill-color", ["case", isUrban, C.red, C.rural]);
+  map.setPaintProperty(
+    "area-fill",
+    "fill-opacity",
+    sat ? ["case", isUrban, ["case", isSelected, 0.35, 0.18], ["case", isSelected, 0.18, 0]] : 1,
+  );
+  map.setPaintProperty("area-line", "line-color", ["case", isUrban, sat ? C.red : C.redDark, sat ? "#ffffff" : C.ruralLine]);
+  map.setPaintProperty("district-outline", "line-color", sat ? "#ffffff" : C.blue);
+  map.setPaintProperty(
+    "buildings",
+    "fill-color",
+    sat ? "#ffffff" : ["case", isUrban, C.buildingUrban, C.buildingRural],
+  );
+  map.setPaintProperty("buildings", "fill-opacity", sat ? 0.85 : ["case", isUrban, 0.9, 0.75]);
+  map.setPaintProperty(
+    "building-points",
+    "circle-color",
+    sat ? "#ffffff" : ["case", isUrban, C.buildingUrban, C.buildingRural],
+  );
+  map.setPaintProperty("building-points", "circle-opacity", sat ? 0.8 : ["case", isUrban, 0.75, 0.6]);
+  $("view-census").setAttribute("aria-pressed", String(!sat));
+  $("view-satellite").setAttribute("aria-pressed", String(sat));
+  document.body.dataset.view = view;
+  renderCredit();
+}
+
+function applyBuildings() {
+  for (const id of ["buildings", "building-points"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showBuildings ? "visible" : "none");
+  }
+  ($("show-buildings") as HTMLInputElement).checked = showBuildings;
+  renderCredit();
+}
+
+// 建物の外周リングの頂点平均を点にする（広域表示用。小さな建物なので十分）
+function buildingPoints(b: BuildingCollection): GeoJSON.FeatureCollection<GeoJSON.Point, { area_type: AreaType }> {
+  return {
+    type: "FeatureCollection",
+    features: b.features.map((f) => {
+      const ring = f.geometry.type === "Polygon" ? f.geometry.coordinates[0] : f.geometry.coordinates[0][0];
+      let x = 0, y = 0;
+      const n = ring.length - 1;
+      for (let i = 0; i < n; i++) { x += ring[i][0]; y += ring[i][1]; }
+      return { type: "Feature", properties: { area_type: f.properties.area_type }, geometry: { type: "Point", coordinates: [x / n, y / n] } };
+    }),
+  };
+}
+
 async function start() {
+  const mapReady = new Promise<void>((res) => (map.loaded() ? res() : map.once("load", () => res())));
+  const buildingsPromise = loadBuildings().catch((e) => {
+    console.error(e);
+    buildingError = e;
+    return null;
+  });
   try {
-    const [data] = await Promise.all([
-      loadAreas(),
-      new Promise<void>((res) => (map.loaded() ? res() : map.once("load", () => res()))),
-    ]);
+    const [data] = await Promise.all([loadAreas(), mapReady]);
     areas = data;
   } catch (e) {
     console.error(e);
     loadError = e;
     renderStatus();
+    renderBuildings();
     return;
   }
 
@@ -221,14 +352,37 @@ async function start() {
   urbanBounds = [[uw, us], [ue, un]];
   map.setMaxBounds([[w - 0.6, s - 0.45], [e + 0.6, n + 0.45]]);
 
-  map.addSource("areas", { type: "geojson", data: areas });
-  const isUrban: ExpressionSpecification = ["==", ["get", "area_type"], "urban"];
+  map.addSource("satellite", {
+    type: "raster",
+    tiles: [SATELLITE_TILES],
+    tileSize: 256,
+    minzoom: 9,
+    maxzoom: 14,
+    bounds: SATELLITE_BOUNDS,
+  });
+  map.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } });
+  map.addSource("mask", { type: "geojson", data: outsideMask(areas) });
   map.addLayer({
-    id: "area-fill",
+    id: "outside-mask",
     type: "fill",
-    source: "areas",
+    source: "mask",
+    layout: { visibility: "none" },
+    paint: { "fill-color": "#141a2b", "fill-opacity": 0.6 },
+  });
+  map.addSource("areas", { type: "geojson", data: areas });
+  map.addLayer({ id: "area-fill", type: "fill", source: "areas", paint: { "fill-color": C.rural } });
+  map.addSource("buildings", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  // 建物：拡大時は輪郭、広域では小さすぎて見えないため点で分布を示す
+  map.addLayer({ id: "buildings", type: "fill", source: "buildings", minzoom: 12.5, paint: { "fill-color": C.buildingRural } });
+  map.addSource("building-points", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "building-points",
+    type: "circle",
+    source: "building-points",
+    maxzoom: 12.5,
     paint: {
-      "fill-color": ["case", isUrban, COLORS.urban, COLORS.rural],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1, 12.5, 2.2],
+      "circle-color": C.buildingRural,
     },
   });
   map.addLayer({
@@ -236,16 +390,16 @@ async function start() {
     type: "line",
     source: "areas",
     paint: {
-      "line-color": ["case", isUrban, COLORS.urbanLine, COLORS.ruralLine],
+      "line-color": C.redDark,
       // 全域表示でも小さな都市区域が見えるよう、低ズームでは都市の線を太めにする
       "line-width": [
         "interpolate",
         ["linear"],
         ["zoom"],
         9,
-        ["case", ["boolean", ["feature-state", "selected"], false], ["case", isUrban, 2.4, 2.6], ["case", isUrban, 1.4, 0.6]],
+        ["case", isSelected, ["case", isUrban, 2.6, 2.6], ["case", isUrban, 1.6, 0.6]],
         13,
-        ["case", ["boolean", ["feature-state", "selected"], false], ["case", isUrban, 3, 3], ["case", isUrban, 1, 0.6]],
+        ["case", isSelected, ["case", isUrban, 3.2, 3], ["case", isUrban, 2, 0.6]],
       ],
     },
   });
@@ -256,7 +410,11 @@ async function start() {
     type: "line",
     source: "outline",
     layout: { "line-join": "round", "line-cap": "round" },
-    paint: { "line-color": COLORS.boundary, "line-width": 1.8 },
+    paint: { "line-color": C.blue, "line-width": 2 },
+  });
+  map.on("error", (ev) => {
+    // 衛星タイルの欠落は地図全体のエラーにしない
+    if ((ev as { sourceId?: string }).sourceId !== "satellite") console.error(ev.error);
   });
 
   map.on("click", "area-fill", (ev) => {
@@ -276,20 +434,42 @@ async function start() {
   map.on("mouseenter", "area-fill", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "area-fill", () => (map.getCanvas().style.cursor = ""));
 
-  ($("zoom-urban") as HTMLButtonElement).disabled = false;
-  ($("reset") as HTMLButtonElement).disabled = false;
+  for (const id of ["zoom-urban", "reset", "view-census", "view-satellite"]) ($(id) as HTMLButtonElement).disabled = false;
   $("zoom-urban").onclick = () => urbanBounds && map.fitBounds(urbanBounds, { padding: fitPadding(), maxZoom: 15 });
   $("reset").onclick = () => {
     popup?.remove();
     setSelected(null);
     showWhole();
   };
+  $("view-census").onclick = () => {
+    view = "census";
+    applyView();
+  };
+  $("view-satellite").onclick = () => {
+    view = "satellite";
+    applyView();
+  };
+  $("show-buildings").onchange = (ev) => {
+    showBuildings = (ev.target as HTMLInputElement).checked;
+    applyBuildings();
+  };
 
+  applyView();
   showWhole(false);
   renderText();
   window.addEventListener("resize", () => map.resize());
+
+  const b = await buildingsPromise;
+  if (b) {
+    buildings = b;
+    (map.getSource("buildings") as maplibregl.GeoJSONSource).setData(b);
+    (map.getSource("building-points") as maplibregl.GeoJSONSource).setData(buildingPoints(b));
+    ($("show-buildings") as HTMLInputElement).disabled = false;
+  }
+  applyBuildings();
+  renderBuildings();
   // 検証用：読み込んだ値を外部から確認できるようにする
-  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), bbox: [w, s, e, n] };
+  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), bbox: [w, s, e, n] };
   document.body.dataset.ready = "true";
 }
 

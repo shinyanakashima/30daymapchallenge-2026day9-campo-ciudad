@@ -1,0 +1,4 @@
+S2B_T21JXM_20260926T134226_L2A https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/21/J/XM/2026/9/S2B_T21JXM_20260926T134226_L2A/TCI.tif
+S2B_T21JYM_20260926T134226_L2A https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/21/J/YM/2026/9/S2B_T21JYM_20260926T134226_L2A/TCI.tif
+S2B_T21JXN_20260926T134226_L2A https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/21/J/XN/2026/9/S2B_T21JXN_20260926T134226_L2A/TCI.tif
+S2B_T21JYN_20260926T134226_L2A https://e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com/sentinel-2-c1-l2a/21/J/YN/2026/9/S2B_T21JYN_20260926T134226_L2A/TCI.tif

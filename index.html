@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Urban and Rural in Yguazú — Census 2022</title>
-    <meta name="description" content="Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations." />
+    <meta name="description" content="Urban and rural census areas of Yguazú, Alto Paraná, Paraguay, with their 2022 populations, building footprints and a Sentinel-2 satellite image." />
   </head>
   <body>
     <div class="app">
@@ -19,8 +19,17 @@
       <main class="map-wrap">
         <div id="map" aria-label="Map of urban and rural census areas in Yguazú"></div>
         <div class="map-tools">
-          <button type="button" id="zoom-urban" data-t="zoomUrban" disabled></button>
-          <button type="button" id="reset" data-t="reset" disabled></button>
+          <div class="row">
+            <button type="button" id="zoom-urban" data-t="zoomUrban" disabled></button>
+            <button type="button" id="reset" data-t="reset" disabled></button>
+          </div>
+          <div class="row layers">
+            <div class="seg" role="group">
+              <button type="button" id="view-census" data-t="viewCensus" aria-pressed="true" disabled></button>
+              <button type="button" id="view-satellite" data-t="viewSatellite" aria-pressed="false" disabled></button>
+            </div>
+            <label class="check"><input type="checkbox" id="show-buildings" disabled /> <span data-t="showBuildings"></span></label>
+          </div>
         </div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
       </main>
@@ -28,7 +37,8 @@
       <aside class="panel">
         <p class="lead" data-t="lead"></p>
 
-        <section class="figures" aria-labelledby="bar-label">
+        <section class="block" aria-labelledby="pop-title">
+          <h2 id="pop-title" data-t="popTitle"></h2>
           <dl class="numbers">
             <div class="num urban" data-area="urban">
               <dt><span class="sw sw-urban"></span><span data-t="urban"></span></dt>
@@ -43,8 +53,7 @@
               <dd><strong id="pop-total">—</strong> <span class="pct" aria-hidden="true"></span></dd>
             </div>
           </dl>
-
-          <h2 class="bar-label" id="bar-label" data-t="barLabel"></h2>
+          <h3 class="bar-label" data-t="barLabel"></h3>
           <div class="bar" role="img" id="bar">
             <div class="bar-urban" id="bar-urban"></div>
             <div class="bar-rural" id="bar-rural"></div>
@@ -52,10 +61,32 @@
           <p class="bar-note" data-t="barNote"></p>
         </section>
 
+        <section class="block" aria-labelledby="bld-title">
+          <h2 id="bld-title" data-t="bldTitle"></h2>
+          <p class="bld-status" id="bld-status"></p>
+          <dl class="numbers small" id="bld-numbers" hidden>
+            <div class="num"><dt><span class="sw sw-urban"></span><span data-t="urban"></span></dt>
+              <dd><strong id="bld-urban"></strong> <span class="pct" id="bld-pct-urban"></span></dd></div>
+            <div class="num"><dt><span class="sw sw-rural"></span><span data-t="rural"></span></dt>
+              <dd><strong id="bld-rural"></strong> <span class="pct" id="bld-pct-rural"></span></dd></div>
+            <div class="num total"><dt data-t="total"></dt>
+              <dd><strong id="bld-total"></strong> <span class="pct" aria-hidden="true"></span></dd></div>
+          </dl>
+          <div id="bld-chart" hidden>
+            <h3 class="bar-label" data-t="bldBarLabel"></h3>
+            <div class="bar" role="img" id="bld-bar">
+              <div class="bar-urban" id="bld-bar-urban"></div>
+              <div class="bar-rural" id="bld-bar-rural"></div>
+            </div>
+            <p class="bar-note" data-t="bldNote"></p>
+          </div>
+        </section>
+
         <ul class="legend">
           <li><span class="sw sw-urban"></span><span data-t="legendUrban"></span></li>
           <li><span class="sw sw-rural"></span><span data-t="legendRural"></span></li>
           <li><span class="sw sw-outside"></span><span data-t="legendOutside"></span></li>
+          <li><span class="sw sw-building"></span><span data-t="legendBuilding"></span></li>
         </ul>
         <p class="hint" data-t="hint"></p>
 
@@ -64,6 +95,7 @@
           <p data-t="note1"></p>
           <p data-t="note2"></p>
           <p data-t="note3"></p>
+          <p data-t="note4"></p>
         </details>
 
         <section class="source">
@@ -71,9 +103,14 @@
           <p data-t="source"></p>
           <p data-t="processing"></p>
           <p data-t="license"></p>
+          <p data-t="srcBuildings"></p>
+          <p data-t="srcSatellite"></p>
           <p class="links">
             <a href="https://www.ine.gov.py/microdatos/cartografia-digital-2022.php" target="_blank" rel="noopener">INE Cartografía digital 2022</a>
-            · <a href="https://www.ine.gov.py/microdatos/license.php" target="_blank" rel="noopener">License</a>
+            · <a href="https://www.ine.gov.py/microdatos/license.php" target="_blank" rel="noopener">INE License</a>
+            · <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noopener">Overture Maps</a>
+            · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+            · <a href="https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice" target="_blank" rel="noopener">Copernicus Sentinel data</a>
             · <a href="https://github.com/shinyanakashima/30daymapchallenge-2026day9-campo-ciudad" target="_blank" rel="noopener">GitHub</a>
           </p>
         </section>
