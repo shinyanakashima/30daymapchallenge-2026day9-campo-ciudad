@@ -123,7 +123,7 @@ function renderNumbers() {
   $("pop-total").textContent = fmt(st.total);
   $("pct-urban").textContent = pctFmt(st.pu);
   $("pct-rural").textContent = pctFmt(st.pr);
-  setBar("bar", st.pu, st.pr, s.barLabel, s.barNote, pctFmt);
+  setBar("bar", st.pu, st.pr, s.barLabel, s.barsNote, pctFmt);
 }
 
 function renderBuildings() {
@@ -132,18 +132,18 @@ function renderBuildings() {
   const b = buildingStats();
   if (b) {
     status.hidden = true;
-    $("bld-numbers").hidden = false;
     $("bld-chart").hidden = false;
     $("bld-urban").textContent = fmt(b.urban);
     $("bld-rural").textContent = fmt(b.rural);
     $("bld-total").textContent = fmt(b.total);
     $("bld-pct-urban").textContent = pct1(b.pu);
     $("bld-pct-rural").textContent = pct1(b.pr);
-    setBar("bld-bar", b.pu, b.pr, s.bldBarLabel, s.bldNote, pct1);
+    setBar("bld-bar", b.pu, b.pr, s.bldBarLabel, s.barsNote, pct1);
   } else {
-    status.hidden = false;
+    $("bld-chart").hidden = true;
+    status.hidden = loadError !== null;
     status.className = buildingError ? "bld-status error" : "bld-status";
-    status.textContent = buildingError ? s.bldError : loadError ? "" : s.bldLoading;
+    status.textContent = buildingError ? s.bldError : s.bldLoading;
   }
 }
 
@@ -220,7 +220,7 @@ map.addControl(new CreditControl(), "bottom-right");
 
 function fitPadding() {
   const small = window.matchMedia("(max-width: 760px)").matches;
-  return small ? { top: 128, bottom: 52, left: 16, right: 48 } : { top: 96, bottom: 56, left: 48, right: 72 };
+  return small ? { top: 100, bottom: 52, left: 16, right: 48 } : { top: 72, bottom: 56, left: 48, right: 72 };
 }
 
 let districtBounds: LngLatBoundsLike | null = null;
@@ -234,7 +234,7 @@ function setSelected(id: number | null) {
   if (selected !== null) map.setFeatureState({ source: "areas", id: selected }, { selected: false });
   selected = id;
   if (id !== null) map.setFeatureState({ source: "areas", id }, { selected: true });
-  document.querySelectorAll<HTMLElement>(".num[data-area]").forEach((el) => {
+  document.querySelectorAll<HTMLElement>("tr[data-area]").forEach((el) => {
     const f = areas?.features.find((x) => x.properties.area_type === el.dataset.area);
     el.classList.toggle("active", f !== undefined && f.properties.id === id);
   });
@@ -288,6 +288,8 @@ function applyView() {
   const sat = view === "satellite";
   map.setLayoutProperty("satellite", "visibility", sat ? "visible" : "none");
   map.setLayoutProperty("outside-mask", "visibility", sat ? "visible" : "none");
+  // 衛星写真の範囲外は暗い地にして、画像の端が目立たないようにする
+  map.setPaintProperty("bg", "background-color", sat ? "#151a26" : C.outside);
   map.setPaintProperty("area-fill", "fill-color", ["case", isUrban, C.red, C.rural]);
   map.setPaintProperty(
     "area-fill",
@@ -378,7 +380,7 @@ async function start() {
     type: "fill",
     source: "mask",
     layout: { visibility: "none" },
-    paint: { "fill-color": "#141a2b", "fill-opacity": 0.6 },
+    paint: { "fill-color": "#151a26", "fill-opacity": 0.62 },
   });
   map.addSource("areas", { type: "geojson", data: areas });
   map.addLayer({ id: "area-fill", type: "fill", source: "areas", paint: { "fill-color": C.rural } });

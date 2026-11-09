@@ -9,7 +9,8 @@
   <body>
     <div class="app">
       <header class="head">
-        <div>
+        <div class="head-text">
+          <p class="eyebrow">30DayMapChallenge 2026 · Day 9 · Urban–rural</p>
           <h1 data-t="title"></h1>
           <p class="place" data-t="place"></p>
         </div>
@@ -18,18 +19,15 @@
 
       <main class="map-wrap">
         <div id="map" aria-label="Map of urban and rural census areas in Yguazú"></div>
-        <div class="map-tools">
-          <div class="row">
-            <button type="button" id="zoom-urban" data-t="zoomUrban" disabled></button>
-            <button type="button" id="reset" data-t="reset" disabled></button>
+        <div class="map-tools" role="toolbar">
+          <div class="seg" role="group">
+            <button type="button" id="view-satellite" data-t="viewSatellite" aria-pressed="true" disabled></button>
+            <button type="button" id="view-census" data-t="viewCensus" aria-pressed="false" disabled></button>
           </div>
-          <div class="row layers">
-            <div class="seg" role="group">
-              <button type="button" id="view-census" data-t="viewCensus" aria-pressed="false" disabled></button>
-              <button type="button" id="view-satellite" data-t="viewSatellite" aria-pressed="true" disabled></button>
-            </div>
-            <label class="check"><input type="checkbox" id="show-buildings" disabled /> <span data-t="showBuildings"></span></label>
-          </div>
+          <label class="check"><input type="checkbox" id="show-buildings" disabled /> <span data-t="showBuildings"></span></label>
+          <span class="tools-sep" aria-hidden="true"></span>
+          <button type="button" class="quiet" id="zoom-urban" data-t="zoomUrban" disabled></button>
+          <button type="button" class="quiet" id="reset" data-t="reset" disabled></button>
         </div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
       </main>
@@ -37,69 +35,73 @@
       <aside class="panel">
         <p class="lead" data-t="lead"></p>
 
-        <section class="block" aria-labelledby="pop-title">
-          <h2 id="pop-title" data-t="popTitle"></h2>
-          <dl class="numbers">
-            <div class="num urban" data-area="urban">
-              <dt><span class="sw sw-urban"></span><span data-t="urban"></span></dt>
-              <dd><strong id="pop-urban">—</strong> <span class="pct" id="pct-urban"></span></dd>
-            </div>
-            <div class="num rural" data-area="rural">
-              <dt><span class="sw sw-rural"></span><span data-t="rural"></span></dt>
-              <dd><strong id="pop-rural">—</strong> <span class="pct" id="pct-rural"></span></dd>
-            </div>
-            <div class="num total">
-              <dt data-t="total"></dt>
-              <dd><strong id="pop-total">—</strong> <span class="pct" aria-hidden="true"></span></dd>
-            </div>
-          </dl>
-          <h3 class="bar-label" data-t="barLabel"></h3>
-          <div class="bar" role="img" id="bar">
-            <div class="bar-urban" id="bar-urban"></div>
-            <div class="bar-rural" id="bar-rural"></div>
-          </div>
-          <p class="bar-note" data-t="barNote"></p>
-        </section>
-
-        <section class="block" aria-labelledby="bld-title">
-          <h2 id="bld-title" data-t="bldTitle"></h2>
+        <section class="compare" aria-label="Population and buildings">
+          <table class="cmp">
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col"><span data-t="colPopulation"></span><small data-t="colPopulationNote"></small></th>
+                <th scope="col"><span data-t="colBuildings"></span><small data-t="colBuildingsNote"></small></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-area="urban">
+                <th scope="row"><span class="sw sw-urban"></span><span data-t="urban"></span></th>
+                <td><strong id="pop-urban">—</strong><span class="pct" id="pct-urban"></span></td>
+                <td><strong id="bld-urban">—</strong><span class="pct" id="bld-pct-urban"></span></td>
+              </tr>
+              <tr data-area="rural">
+                <th scope="row"><span class="sw sw-rural"></span><span data-t="rural"></span></th>
+                <td><strong id="pop-rural">—</strong><span class="pct" id="pct-rural"></span></td>
+                <td><strong id="bld-rural">—</strong><span class="pct" id="bld-pct-rural"></span></td>
+              </tr>
+              <tr class="total">
+                <th scope="row" data-t="total"></th>
+                <td><strong id="pop-total">—</strong></td>
+                <td><strong id="bld-total">—</strong></td>
+              </tr>
+            </tbody>
+          </table>
           <p class="bld-status" id="bld-status"></p>
-          <dl class="numbers small" id="bld-numbers" hidden>
-            <div class="num"><dt><span class="sw sw-urban"></span><span data-t="urban"></span></dt>
-              <dd><strong id="bld-urban"></strong> <span class="pct" id="bld-pct-urban"></span></dd></div>
-            <div class="num"><dt><span class="sw sw-rural"></span><span data-t="rural"></span></dt>
-              <dd><strong id="bld-rural"></strong> <span class="pct" id="bld-pct-rural"></span></dd></div>
-            <div class="num total"><dt data-t="total"></dt>
-              <dd><strong id="bld-total"></strong> <span class="pct" aria-hidden="true"></span></dd></div>
-          </dl>
-          <div id="bld-chart" hidden>
-            <h3 class="bar-label" data-t="bldBarLabel"></h3>
-            <div class="bar" role="img" id="bld-bar">
-              <div class="bar-urban" id="bld-bar-urban"></div>
-              <div class="bar-rural" id="bld-bar-rural"></div>
+
+          <div class="bars">
+            <div class="bar-row">
+              <span class="bar-name" data-t="colPopulation"></span>
+              <div class="bar" role="img" id="bar">
+                <div class="bar-urban" id="bar-urban"></div>
+                <div class="bar-rural" id="bar-rural"></div>
+              </div>
             </div>
-            <p class="bar-note" data-t="bldNote"></p>
+            <div class="bar-row" id="bld-chart" hidden>
+              <span class="bar-name" data-t="colBuildings"></span>
+              <div class="bar" role="img" id="bld-bar">
+                <div class="bar-urban" id="bld-bar-urban"></div>
+                <div class="bar-rural" id="bld-bar-rural"></div>
+              </div>
+            </div>
+            <p class="bar-note" data-t="barsNote"></p>
           </div>
         </section>
 
         <ul class="legend">
           <li><span class="sw sw-urban"></span><span data-t="legendUrban"></span></li>
           <li><span class="sw sw-rural"></span><span data-t="legendRural"></span></li>
-          <li><span class="sw sw-outside"></span><span data-t="legendOutside"></span></li>
           <li><span class="sw sw-building"></span><span data-t="legendBuilding"></span></li>
+          <li><span class="sw sw-outside"></span><span data-t="legendOutside"></span></li>
         </ul>
         <p class="hint" data-t="hint"></p>
 
-        <details class="notes">
+        <details class="fold">
           <summary data-t="notesTitle"></summary>
           <p data-t="note1"></p>
           <p data-t="note2"></p>
           <p data-t="note3"></p>
+          <p data-t="bldNote"></p>
           <p data-t="note4"></p>
         </details>
 
-        <section class="source">
-          <h2 data-t="sourceTitle"></h2>
+        <details class="fold source">
+          <summary data-t="sourceTitle"></summary>
           <p data-t="source"></p>
           <p data-t="processing"></p>
           <p data-t="license"></p>
@@ -111,9 +113,9 @@
             · <a href="https://docs.overturemaps.org/attribution/" target="_blank" rel="noopener">Overture Maps</a>
             · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
             · <a href="https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice" target="_blank" rel="noopener">Copernicus Sentinel data</a>
-            · <a href="https://github.com/shinyanakashima/30daymapchallenge-2026day9-campo-ciudad" target="_blank" rel="noopener">GitHub</a>
           </p>
-        </section>
+        </details>
+        <p class="src-short"><span data-t="srcShort"></span> · <a href="https://github.com/shinyanakashima/30daymapchallenge-2026day9-campo-ciudad" target="_blank" rel="noopener">GitHub</a></p>
       </aside>
     </div>
     <script type="module" src="/src/main.ts"></script>

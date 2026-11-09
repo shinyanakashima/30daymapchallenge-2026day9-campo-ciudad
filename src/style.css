@@ -1,18 +1,24 @@
 :root {
-  /* パラグアイの国旗の赤・白・青に寄せた配色 */
-  --ink: #1d2233;
-  --muted: #565c6e;
+  /* パラグアイの国旗の赤・白・青に寄せた配色（国旗・国章そのものは使わない） */
+  --ink: #1b2030;
+  --muted: #5a6072;
+  --faint: #8a90a0;
   --paper: #ffffff;
-  --line: #dde0e8;
+  --panel: #fafbfd;
+  --line: #e2e5ec;
   --blue: #0038a8;
+  --blue-soft: #e8eef9;
   --urban: #d52b1e;
   --urban-dark: #8e1b12;
   --rural: #fbfaf6;
   --rural-line: #9aa6c4;
   --outside: #d3d6dd;
+  --radius: 6px;
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.18), 0 1px 2px rgba(16, 24, 40, 0.08);
   font-family: "Helvetica Neue", Arial, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif;
   color: var(--ink);
   background: var(--paper);
+  -webkit-font-smoothing: antialiased;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -22,70 +28,97 @@ body { background: var(--paper); }
   height: 100vh;
   height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 380px;
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas: "head head" "map panel";
 }
+
+/* ---- ヘッダー ---- */
 .head {
   grid-area: head;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
-  padding: 14px 20px 12px;
+  padding: 12px 20px 12px;
   border-bottom: 3px solid var(--urban);
+  background: var(--paper);
 }
-h1 { margin: 0; font-size: 1.45rem; line-height: 1.25; letter-spacing: 0.01em; color: var(--blue); }
-.place { margin: 3px 0 0; color: var(--muted); font-size: 0.9rem; }
+.eyebrow {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+h1 { margin: 0; font-size: 1.5rem; line-height: 1.2; color: var(--blue); }
+.place { margin: 3px 0 0; color: var(--muted); font-size: 0.88rem; }
+
+/* ---- ボタン共通 ---- */
 button {
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1;
   color: var(--ink);
   background: #fff;
-  border: 1px solid #b9b7ad;
-  border-radius: 4px;
-  padding: 6px 10px;
+  border: 1px solid #c3c8d4;
+  border-radius: var(--radius);
+  height: 30px;
+  padding: 0 11px;
   cursor: pointer;
+  white-space: nowrap;
 }
-button:hover:not(:disabled) { border-color: var(--ink); }
-button:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 button:disabled { opacity: 0.45; cursor: default; }
-.lang { flex: none; }
-.lang button { padding: 5px 9px; min-width: 2.6em; }
 
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.seg button + button { border-left: 0; }
+.seg button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.seg button[aria-pressed="true"],
+.seg button[aria-pressed="true"]:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+.lang { flex: none; }
+.lang button { min-width: 2.8em; padding: 0 9px; }
+
+/* ---- 地図 ---- */
 .map-wrap { grid-area: map; position: relative; min-height: 0; }
 #map { position: absolute; inset: 0; background: var(--outside); }
+
+/* 地図上の操作はひとつのカードにまとめる */
 .map-tools {
   position: absolute;
   left: 12px;
   top: 12px;
-  right: 56px;
-  display: grid;
+  max-width: calc(100% - 64px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  justify-items: start;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
   z-index: 2;
-  pointer-events: none;
 }
-.map-tools .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; pointer-events: auto; }
-.map-tools button, .map-tools .check { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
-.seg { display: inline-flex; }
-.seg button { border-radius: 0; }
-.seg button:first-child { border-radius: 4px 0 0 4px; }
-.seg button + button { border-left: 0; }
-.seg button:last-child { border-radius: 0 4px 4px 0; }
-.seg button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
 .check {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.85rem;
+  height: 30px;
+  padding: 0 10px 0 8px;
+  font-size: 0.82rem;
+  border: 1px solid #c3c8d4;
+  border-radius: var(--radius);
   background: #fff;
-  border: 1px solid #b9bdc9;
-  border-radius: 4px;
-  padding: 5px 10px 5px 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
-.check input { margin: 0; accent-color: var(--blue); }
+.check input { margin: 0; accent-color: var(--blue); width: 15px; height: 15px; }
+.tools-sep { width: 1px; height: 20px; background: var(--line); margin: 0 2px; }
+button.quiet { border-color: transparent; background: transparent; color: var(--blue); padding: 0 8px; }
+button.quiet:hover:not(:disabled) { background: var(--blue-soft); border-color: transparent; }
 
 .status {
   position: absolute;
@@ -95,118 +128,167 @@ button:disabled { opacity: 0.45; cursor: default; }
   text-align: center;
   z-index: 3;
   padding: 24px;
-  background: rgba(217, 217, 214, 0.85);
+  background: rgba(211, 214, 221, 0.88);
   color: var(--ink);
   font-size: 0.95rem;
 }
 .status.hidden { display: none; }
-.status.error { background: rgba(247, 246, 242, 0.97); gap: 8px; justify-items: center; }
+.status.error { background: rgba(255, 255, 255, 0.97); gap: 10px; justify-items: center; }
 .status.error strong { font-size: 1.1rem; color: var(--urban-dark); }
 .status.error p { margin: 0; max-width: 32em; }
 .status.error code { font-size: 0.8rem; color: var(--muted); max-width: 40em; word-break: break-word; }
 
+/* ---- パネル ---- */
 .panel {
   grid-area: panel;
   overflow-y: auto;
-  padding: 16px 20px 20px;
+  padding: 18px 22px 20px;
   border-left: 1px solid var(--line);
-  font-size: 0.9rem;
+  background: var(--panel);
+  font-size: 0.88rem;
   line-height: 1.55;
 }
-.lead { margin: 0 0 14px; font-size: 1rem; line-height: 1.5; }
+.lead { margin: 0 0 16px; font-size: 1.02rem; line-height: 1.55; }
 
-.block { margin-bottom: 14px; }
-.block h2 { font-size: 0.82rem; margin: 0 0 4px; color: var(--blue); text-transform: uppercase; letter-spacing: 0.04em; }
-:lang(ja) .block h2 { text-transform: none; letter-spacing: 0; }
-.numbers { margin: 0; display: grid; gap: 2px; }
-.numbers.small strong { font-size: 1.1rem; }
-.numbers.small .num { padding: 3px 8px; }
-.bld-status { margin: 4px 0; color: var(--muted); font-size: 0.85rem; }
-.bld-status.error { color: var(--urban-dark); }
-.num {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid transparent;
+/* 人口と建物を並べて比べる表 */
+.compare {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px 12px;
 }
-.num.active { border-color: var(--ink); background: #fff; }
-.num dt { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.num dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.num strong { font-size: 1.35rem; }
-.num .pct { color: var(--muted); margin-left: 6px; display: inline-block; min-width: 4.2em; }
-.num.total { border-top: 1px solid var(--line); border-radius: 0; margin-top: 2px; }
+.cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cmp thead th {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: right;
+  padding: 0 0 6px;
+  vertical-align: bottom;
+  border-bottom: 1px solid var(--line);
+}
+:lang(ja) .cmp thead th { text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+.cmp thead th small {
+  display: block;
+  font-weight: 400;
+  color: var(--faint);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+}
+.cmp tbody th { text-align: left; font-weight: 600; padding: 8px 0; white-space: nowrap; }
+.cmp tbody th .sw { margin-right: 8px; vertical-align: -2px; }
+.cmp td { text-align: right; padding: 8px 0 8px 10px; white-space: nowrap; }
+.cmp td strong { font-size: 1.28rem; font-weight: 700; display: block; line-height: 1.15; }
+.cmp td .pct { display: block; color: var(--muted); font-size: 0.8rem; }
+.cmp tr[data-area] + tr th, .cmp tr[data-area] + tr td { border-top: 1px solid var(--line); }
+.cmp tr.total th, .cmp tr.total td { color: var(--muted); padding-bottom: 2px; }
+.cmp tr.total td strong { font-size: 1rem; color: var(--ink); }
+.cmp tr.active th, .cmp tr.active td { background: var(--blue-soft); }
+.cmp tr.active th { box-shadow: inset 3px 0 0 var(--blue); padding-left: 8px; }
+.bld-status { margin: 6px 0 0; color: var(--muted); font-size: 0.82rem; }
+.bld-status.error { color: var(--urban-dark); }
 
-.bar-label { font-size: 0.85rem; margin: 10px 0 4px; font-weight: 600; }
+.bars { margin-top: 12px; display: grid; gap: 6px; }
+.bar-row { display: grid; grid-template-columns: 5.6em 1fr; align-items: center; gap: 8px; }
+.bar-row[hidden] { display: none; }
+.bar-name { font-size: 0.78rem; color: var(--muted); }
 .bar {
   display: flex;
-  height: 26px;
-  border: 1px solid var(--ink);
-  border-radius: 3px;
+  height: 22px;
+  border-radius: 4px;
   overflow: hidden;
-  font-size: 0.78rem;
+  box-shadow: inset 0 0 0 1px #c9cdd8;
+  background: var(--rural);
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
 }
 .bar > div { display: flex; align-items: center; padding: 0 6px; white-space: nowrap; min-width: 0; }
+.bar > div:empty { display: none; }
 .bar-urban { background: var(--urban); color: #fff; }
-.bar-rural { background: var(--rural); justify-content: flex-end; }
-.bar-note { margin: 4px 0 0; font-size: 0.8rem; color: var(--muted); }
+.bar-rural { justify-content: flex-end; color: var(--muted); }
+.bar-note { margin: 2px 0 0; font-size: 0.76rem; color: var(--muted); }
 
-.sw { display: inline-block; width: 14px; height: 14px; border-radius: 2px; flex: none; }
-.sw-urban { background: var(--urban); border: 1px solid var(--urban-dark); }
-.sw-rural { background: var(--rural); border: 1px solid var(--rural-line); }
-.sw-outside { background: var(--outside); border: 1px solid #aeb3bf; }
-.sw-building { background: var(--blue); border: 1px solid var(--blue); width: 8px; height: 8px; margin: 3px; }
+/* 凡例 */
+.sw { display: inline-block; width: 13px; height: 13px; border-radius: 3px; flex: none; }
+.sw-urban { background: var(--urban); box-shadow: inset 0 0 0 1px var(--urban-dark); }
+.sw-rural { background: var(--rural); box-shadow: inset 0 0 0 1px var(--rural-line); }
+.sw-outside { background: var(--outside); box-shadow: inset 0 0 0 1px #aeb3bf; }
+.sw-building { background: var(--blue); width: 7px; height: 7px; border-radius: 1px; margin: 3px; }
 /* 衛星写真表示では建物は白（都市区域内は赤）で描くので凡例も合わせる */
-body[data-view="satellite"] .sw-building { background: #fff; border-color: #6b7180; }
+body[data-view="satellite"] .sw-building { background: #fff; box-shadow: 0 0 0 1px #6b7180; }
+body[data-view="satellite"] .sw-outside { background: #3a3f4c; box-shadow: none; }
 
-.legend { list-style: none; padding: 0; margin: 16px 0 4px; display: grid; gap: 4px; }
+.legend {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  font-size: 0.82rem;
+}
 .legend li { display: flex; align-items: center; gap: 8px; }
-.hint { margin: 6px 0 12px; color: var(--muted); font-size: 0.82rem; }
+.hint { margin: 10px 0 14px; color: var(--muted); font-size: 0.8rem; }
 
-.notes { border-top: 1px solid var(--line); padding-top: 8px; }
-.notes summary { cursor: pointer; font-weight: 600; }
-.notes p { margin: 6px 0; font-size: 0.82rem; }
-.source { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; font-size: 0.78rem; color: var(--muted); }
-.source h2 { font-size: 0.82rem; margin: 0 0 4px; color: var(--ink); }
-.source p { margin: 0 0 6px; }
-.source a { color: var(--blue); }
+/* 折りたたみ */
+.fold { border-top: 1px solid var(--line); padding: 10px 0 2px; }
+.fold:last-of-type { border-bottom: 1px solid var(--line); }
+.fold summary { cursor: pointer; font-weight: 600; font-size: 0.85rem; list-style: none; display: flex; align-items: center; gap: 8px; }
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+  margin: 0 2px;
+}
+.fold[open] summary::before { transform: rotate(45deg); }
+.fold p { margin: 8px 0; font-size: 0.8rem; color: var(--muted); }
+.fold a, .src-short a { color: var(--blue); }
+.src-short { margin: 12px 0 0; font-size: 0.76rem; color: var(--muted); }
 
 /* 地図上のクレジット（常時表示） */
 .maplibregl-ctrl.credit {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   font-size: 11px;
   padding: 2px 6px;
   margin: 0 6px 6px 0;
   color: var(--ink);
-  border-radius: 2px;
+  border-radius: 3px;
 }
-.maplibregl-popup-content { padding: 10px 26px 10px 12px; font-size: 0.85rem; line-height: 1.45; }
-.maplibregl-popup-close-button { font-size: 18px; width: 24px; height: 24px; }
-.pop strong { display: block; font-size: 0.95rem; }
-.pop-urban strong { color: var(--urban-dark); }
-.pop-num { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.maplibregl-ctrl-group { border-radius: var(--radius) !important; box-shadow: var(--shadow) !important; }
+.maplibregl-ctrl-scale { border-color: var(--ink); color: var(--ink); background: rgba(255, 255, 255, 0.85); }
+
+/* ポップアップ */
+.maplibregl-popup-content { padding: 10px 28px 10px 12px; font-size: 0.85rem; line-height: 1.45; border-radius: 8px; box-shadow: var(--shadow); }
+.maplibregl-popup-close-button { font-size: 18px; width: 26px; height: 26px; color: var(--muted); }
+.pop strong { display: block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+:lang(ja) .pop strong { text-transform: none; letter-spacing: 0; }
+.pop-urban strong { color: var(--urban); }
+.pop-rural strong { color: var(--blue); }
+.pop-num { font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pop-bld { margin-top: 2px; }
-.pop-year { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
+.pop-year { color: var(--faint); font-size: 0.74rem; margin-top: 4px; }
 
-/* 小画面：地図の下に数字と凡例 */
+/* ---- 小画面：地図の下に数字と凡例 ---- */
 @media (max-width: 760px) {
-  .app {
-    height: auto;
-    display: block;
-  }
-  .head { padding: 12px 16px 10px; }
-  h1 { font-size: 1.2rem; }
+  .app { height: auto; display: block; }
+  .head { padding: 10px 14px; align-items: flex-start; }
+  .eyebrow { font-size: 0.66rem; }
+  h1 { font-size: 1.22rem; }
   .place { font-size: 0.8rem; }
-  .map-wrap { height: 62vh; height: 62svh; min-height: 320px; }
-  .panel { border-left: 0; overflow: visible; padding: 14px 16px 24px; }
-  .map-tools { left: 8px; top: 8px; right: 48px; gap: 4px; }
-  .map-tools button, .check { padding: 5px 7px; font-size: 0.78rem; }
+  .lang button { height: 28px; min-width: 2.4em; padding: 0 7px; font-size: 0.78rem; }
+  .map-wrap { height: 64vh; height: 64svh; min-height: 340px; }
+  .map-tools { left: 8px; top: 8px; max-width: calc(100% - 56px); padding: 5px; gap: 5px; }
+  .map-tools button, .check { height: 28px; font-size: 0.76rem; }
+  .map-tools .seg button { padding: 0 8px; }
+  .tools-sep { display: none; }
+  .panel { border-left: 0; overflow: visible; padding: 16px 14px 24px; }
   .maplibregl-ctrl.credit { font-size: 9.5px; line-height: 1.3; padding: 2px 5px; margin: 0 4px 4px 0; max-width: calc(100vw - 96px); }
-  .maplibregl-ctrl-scale { margin-bottom: 4px !important; }
 }
-
-/* 未読込・エラー時は空の棒を描かない */
-.bar > div:empty { display: none; }
