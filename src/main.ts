@@ -7,6 +7,8 @@ import "./style.css";
 import {
   loadAreas,
   loadBuildings,
+  loadRoads,
+  type RoadCollection,
   bboxOf,
   districtOutline,
   outsideMask,
@@ -75,6 +77,10 @@ let loadError: unknown = null;
 // 初期表示は衛星写真＋建物
 let view: "census" | "satellite" = "satellite";
 let showBuildings = true;
+let roads: RoadCollection | null = null;
+let showRoads = true;
+// 言語切替時に開いているポップアップを描き直すための関数
+let popupRefresh: (() => void) | null = null;
 
 function stats() {
   if (!areas) return null;
@@ -118,7 +124,7 @@ function renderText() {
   renderViewList();
   renderStatus();
   renderCredit();
-  if (popup && selected !== null) openPopupFor(selected, popup.getLngLat());
+  if (popup?.isOpen()) popupRefresh?.();
 }
 
 function renderNumbers() {
@@ -209,6 +215,7 @@ function openViewPopup(n: number) {
     .setLngLat([p.lng, p.lat])
     .setDOMContent(box)
     .addTo(map);
+  popupRefresh = () => openViewPopup(n);
 }
 
 function renderStatus() {
@@ -278,7 +285,7 @@ function renderCredit() {
   const parts = [s.attribution];
   if (basemapOk) parts.push(s.attrBasemap);
   // OpenStreetMap の表記は背景地図の表記に含まれるので、建物では重ねて書かない
-  if (showBuildings && buildings) parts.push(basemapOk ? s.attrBuildingsShort : s.attrBuildings);
+  if ((showBuildings && buildings) || (showRoads && roads)) parts.push(basemapOk ? s.attrBuildingsShort : s.attrBuildings);
   if (view === "satellite") parts.push(s.attrSatellite);
   creditEl.textContent = parts.join(" · ");
 }
@@ -306,43 +313,106 @@ function setSelected(id: number | null) {
   });
 }
 
-function openPopupFor(id: number, lngLat: maplibregl.LngLatLike) {
-  const f = areas?.features.find((x) => x.properties.id === id);
-  const st = stats();
-  if (!f || !st) return;
-  const s = t();
-  const p = f.properties;
-  const share = p.area_type === "urban" ? st.pu : st.pr;
-  const box = document.createElement("div");
-  box.className = `pop pop-${p.area_type}`;
-  const h = document.createElement("strong");
-  h.textContent = p.area_type === "urban" ? s.urban : s.rural;
-  const n = document.createElement("div");
-  n.className = "pop-num";
-  n.textContent = `${fmt(p.population)} ${s.people}`;
-  const r = document.createElement("div");
-  r.textContent = `${pctFmt(share)} ${s.popupShare}`;
-  box.append(h, n, r);
-  const b = buildingStats();
-  if (b) {
-    const bl = document.createElement("div");
-    bl.className = "pop-bld";
-    const count = p.area_type === "urban" ? b.urban : b.rural;
-    bl.textContent = `${s.bldTitle}: ${fmt(count)}`;
-    box.append(bl);
+// ---- 道路：クリックした道路上の点でストリートビューを開く ----
+const M_LAT = 110574;
+const mLng = (lat: number) => 111320 * Math.cos((lat * Math.PI) / 180);
+
+// 道路上でクリック位置に最も近い点と、その区間の向き（方位角、度）を求める
+function snapToRoad(f: RoadCollection["features"][number], lng: number, lat: number) {
+  const kx = mLng(lat);
+  const lines = f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.coordinates;
+  let best = { d: Infinity, lng, lat, heading: 0 };
+  for (const line of lines) {
+    for (let i = 0; i < line.length - 1; i++) {
+      const [ax, ay] = line[i];
+      const [bx, by] = line[i + 1];
+      const dx = (bx - ax) * kx, dy = (by - ay) * M_LAT;
+      const px = (lng - ax) * kx, py = (lat - ay) * M_LAT;
+      const len2 = dx * dx + dy * dy;
+      const tt = len2 > 0 ? Math.max(0, Math.min(1, (px * dx + py * dy) / len2)) : 0;
+      const qx = dx * tt, qy = dy * tt;
+      const d = Math.hypot(px - qx, py - qy);
+      if (d < best.d) {
+        const heading = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+        best = { d, lng: ax + qx / kx, lat: ay + qy / M_LAT, heading };
+      }
+    }
   }
-  const y = document.createElement("div");
-  y.className = "pop-year";
-  y.textContent = `INE, ${p.census_year}`;
-  box.append(y);
+  return best;
+}
+
+function pointInRing(x: number, y: number, ring: number[][]) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function areaAt(lng: number, lat: number): AreaType | null {
+  for (const f of areas?.features ?? []) {
+    const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const poly of polys) {
+      if (pointInRing(lng, lat, poly[0]) && !poly.slice(1).some((h) => pointInRing(lng, lat, h))) return f.properties.area_type;
+    }
+  }
+  return null;
+}
+
+const svAt = (lat: number, lng: number, heading: number) =>
+  `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat.toFixed(6)},${lng.toFixed(6)}&heading=${Math.round(heading)}`;
+
+function roadLabel(c: string): string {
+  const s = t();
+  const key = `road_${c}` as keyof Strings;
+  return key in s ? s[key] : s.road_other;
+}
+
+function openRoadPopup(roadId: number, lng: number, lat: number) {
+  const f = roads?.features[roadId];
+  if (!f) return;
+  const s = t();
+  const p = snapToRoad(f, lng, lat);
+  const area = areaAt(p.lng, p.lat);
+  const box = document.createElement("div");
+  box.className = "pop pop-road";
+  const h = document.createElement("strong");
+  h.textContent = f.properties.name ?? roadLabel(f.properties.class);
+  const sub = document.createElement("div");
+  sub.className = "pop-sub";
+  sub.textContent = [f.properties.name ? roadLabel(f.properties.class) : null, area ? (area === "urban" ? s.legendUrban : s.legendRural) : null]
+    .filter(Boolean)
+    .join(" · ");
+  const a = document.createElement("a");
+  a.href = svAt(p.lat, p.lng, p.heading);
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.className = "sv-link";
+  a.textContent = s.svHere;
+  box.append(h, sub, a);
   popup?.remove();
-  popup = new maplibregl.Popup({ closeButton: true, maxWidth: "240px", focusAfterOpen: false })
-    .setLngLat(lngLat)
+  if (hoveredRoad !== null) map.setFeatureState({ source: "roads", id: hoveredRoad }, { hover: false });
+  map.setFeatureState({ source: "roads", id: roadId }, { hover: true });
+  hoveredRoad = roadId;
+  popup = new maplibregl.Popup({ closeButton: true, maxWidth: "260px", focusAfterOpen: false, offset: 8 })
+    .setLngLat([p.lng, p.lat])
     .setDOMContent(box)
     .addTo(map);
   popup.on("close", () => {
-    if (popup && !popup.isOpen()) setSelected(null);
+    if (hoveredRoad !== null) map.setFeatureState({ source: "roads", id: hoveredRoad }, { hover: false });
+    hoveredRoad = null;
   });
+  popupRefresh = () => openRoadPopup(roadId, p.lng, p.lat);
+}
+let hoveredRoad: number | null = null;
+
+function applyRoads() {
+  for (const id of ["roads", "roads-hit"]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", showRoads ? "visible" : "none");
+  }
+  ($("show-roads") as HTMLInputElement).checked = showRoads;
+  renderCredit();
 }
 
 const isUrban: ExpressionSpecification = ["==", ["get", "area_type"], "urban"];
@@ -384,6 +454,14 @@ function applyView() {
     sat ? ["case", isUrban, C.satUrbanBuilding, "#ffffff"] : ["case", isUrban, C.redDark, C.buildingRural],
   );
   map.setPaintProperty("building-points", "circle-opacity", sat ? 0.9 : ["case", isUrban, 0.55, 0.6]);
+  if (map.getLayer("roads")) {
+    map.setPaintProperty("roads", "line-color", [
+      "case",
+      ["boolean", ["feature-state", "hover"], false],
+      sat ? "#ffffff" : C.blue,
+      sat ? "#f3d36b" : "#6f7686",
+    ]);
+  }
   $("view-census").setAttribute("aria-pressed", String(!sat));
   $("view-satellite").setAttribute("aria-pressed", String(sat));
   document.body.dataset.view = view;
@@ -440,6 +518,10 @@ function addLayer(layer: maplibregl.AddLayerObject) {
 
 async function start() {
   const mapReady = loadBasemap();
+  const roadsPromise = loadRoads().catch((e) => {
+    console.error(e);
+    return null;
+  });
   const buildingsPromise = loadBuildings().catch((e) => {
     console.error(e);
     buildingError = e;
@@ -496,6 +578,32 @@ async function start() {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 1, 12.5, 2.2],
       "circle-color": C.buildingRural,
     },
+  });
+  // 道路（Overture）。クリックしやすいよう、見えない太い線を判定用に重ねる
+  map.addSource("roads", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  const major: ExpressionSpecification = ["match", ["get", "class"], ["motorway", "trunk", "primary"], true, false];
+  const mid: ExpressionSpecification = ["match", ["get", "class"], ["secondary", "tertiary"], true, false];
+  const hov: ExpressionSpecification = ["boolean", ["feature-state", "hover"], false];
+  addLayer({
+    id: "roads",
+    type: "line",
+    source: "roads",
+    layout: { "line-join": "round", "line-cap": "round" },
+    paint: {
+      "line-color": "#6f7686",
+      "line-opacity": ["case", hov, 1, 0.85],
+      "line-width": [
+        "interpolate", ["linear"], ["zoom"],
+        9, ["case", hov, 3, major, 1.6, mid, 1.1, 0.5],
+        14, ["case", hov, 6, major, 4, mid, 3, 1.8],
+      ],
+    },
+  });
+  addLayer({
+    id: "roads-hit",
+    type: "line",
+    source: "roads",
+    paint: { "line-color": "#000000", "line-opacity": 0, "line-width": 18 },
   });
   addLayer({
     id: "area-line",
@@ -581,23 +689,26 @@ async function start() {
     if (id !== "satellite" && id !== "openmaptiles" && id !== "ne2_shaded") console.error(ev.error);
   });
 
-  map.on("click", "area-fill", (ev) => {
-    if (map.queryRenderedFeatures(ev.point, { layers: ["viewpoints"] }).length) return;
-    const f = ev.features?.[0] as MapGeoJSONFeature | undefined;
-    if (!f) return;
-    const id = Number(f.properties.id);
-    setSelected(id);
-    openPopupFor(id, ev.lngLat);
-  });
+  // 道路をクリック：判定用の太い線で拾い、クリック位置に最も近い道路を選ぶ
   map.on("click", (ev) => {
-    const hit = map.queryRenderedFeatures(ev.point, { layers: ["area-fill", "viewpoints"] });
-    if (!hit.length) {
+    if (map.queryRenderedFeatures(ev.point, { layers: ["viewpoints"] }).length) return;
+    const hits = map.getLayer("roads-hit") && showRoads ? map.queryRenderedFeatures(ev.point, { layers: ["roads-hit"] }) : [];
+    if (!hits.length || !roads) {
       popup?.remove();
-      setSelected(null);
+      return;
     }
+    let bestId = -1, bestD = Infinity;
+    for (const h of hits as MapGeoJSONFeature[]) {
+      const id = Number(h.id);
+      const f = roads.features[id];
+      if (!f) continue;
+      const d = snapToRoad(f, ev.lngLat.lng, ev.lngLat.lat).d;
+      if (d < bestD) { bestD = d; bestId = id; }
+    }
+    if (bestId >= 0) openRoadPopup(bestId, ev.lngLat.lng, ev.lngLat.lat);
   });
-  map.on("mouseenter", "area-fill", () => (map.getCanvas().style.cursor = "pointer"));
-  map.on("mouseleave", "area-fill", () => (map.getCanvas().style.cursor = ""));
+  map.on("mouseenter", "roads-hit", () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", "roads-hit", () => (map.getCanvas().style.cursor = ""));
 
   for (const id of ["zoom-urban", "reset", "locate", "view-census", "view-satellite"]) ($(id) as HTMLButtonElement).disabled = false;
   $("locate").onclick = () => {
@@ -619,6 +730,11 @@ async function start() {
     view = "satellite";
     applyView();
   };
+  $("show-roads").onchange = (ev) => {
+    showRoads = (ev.target as HTMLInputElement).checked;
+    if (!showRoads) popup?.remove();
+    applyRoads();
+  };
   $("show-buildings").onchange = (ev) => {
     showBuildings = (ev.target as HTMLInputElement).checked;
     applyBuildings();
@@ -629,6 +745,14 @@ async function start() {
   renderText();
   window.addEventListener("resize", () => map.resize());
 
+  const r = await roadsPromise;
+  if (r) {
+    roads = r;
+    (map.getSource("roads") as maplibregl.GeoJSONSource).setData(r);
+    ($("show-roads") as HTMLInputElement).disabled = false;
+  }
+  applyRoads();
+  applyView();
   const b = await buildingsPromise;
   if (b) {
     buildings = b;
@@ -639,7 +763,7 @@ async function start() {
   applyBuildings();
   renderBuildings();
   // 検証用：読み込んだ値を外部から確認できるようにする
-  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), bbox: [w, s, e, n] };
+  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), roads: roads?.features.length ?? 0, bbox: [w, s, e, n] };
   document.body.dataset.ready = "true";
 }
 

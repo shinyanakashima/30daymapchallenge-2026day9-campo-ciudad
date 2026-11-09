@@ -1,7 +1,7 @@
 // GeoParquet を取得し、検証してから GeoJSON FeatureCollection に変換する。
 import { parquetMetadata, parquetReadObjects } from "hyparquet";
 import { decompressZstd } from "hyparquet-compressors";
-import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Polygon, Position } from "geojson";
+import type { Feature, FeatureCollection, LineString, MultiLineString, MultiPolygon, Polygon, Position } from "geojson";
 import { wkbToGeometry } from "./wkb";
 
 export type AreaType = "urban" | "rural";
@@ -20,6 +20,7 @@ const compressors = { ZSTD: (input: Uint8Array, outputLength: number) => decompr
 
 export const DATA_URL = `${import.meta.env.BASE_URL}data/day9-yguazu.parquet`;
 export const BUILDINGS_URL = `${import.meta.env.BASE_URL}data/day9-yguazu-buildings.parquet`;
+export const ROADS_URL = `${import.meta.env.BASE_URL}data/day9-yguazu-roads.parquet`;
 
 // GeoParquet の CRS が WGS84 経緯度（x=経度, y=緯度）であることを確認する。
 // crs 省略時は仕様上 OGC:CRS84。
@@ -95,6 +96,29 @@ export async function loadBuildings(url = BUILDINGS_URL): Promise<BuildingCollec
     const geometry = wkbToGeometry(row.geometry);
     checkBounds(geometry);
     return { type: "Feature", geometry, properties: { area_type: type, source } };
+  });
+  return { type: "FeatureCollection", features };
+}
+
+export type RoadProps = { id: number; class: string; name: string | null };
+export type RoadCollection = FeatureCollection<LineString | MultiLineString, RoadProps>;
+
+export async function loadRoads(url = ROADS_URL): Promise<RoadCollection> {
+  const rows = await readGeoParquet(url);
+  if (rows.length === 0) throw new Error("No roads in file");
+  const features = rows.map((row, i): Feature<LineString | MultiLineString, RoadProps> => {
+    if (!(row.geometry instanceof Uint8Array)) throw new Error("Geometry column is not WKB bytes");
+    const geometry = wkbToGeometry(row.geometry, true);
+    const pts = geometry.type === "LineString" ? geometry.coordinates : geometry.coordinates.flat();
+    for (const [x, y] of pts) {
+      if (!(x >= -62 && x <= -54 && y >= -28 && y <= -19)) throw new Error("Road coordinates fall outside Paraguay");
+    }
+    return {
+      type: "Feature",
+      id: i,
+      geometry,
+      properties: { id: i, class: String(row.class), name: row.name == null ? null : String(row.name) },
+    };
   });
   return { type: "FeatureCollection", features };
 }

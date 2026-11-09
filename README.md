@@ -72,6 +72,10 @@ python scripts/prepare-yguazu.py /path/to/extracted-directory
 2. `scripts/s2-mosaic.py`：TCI（COG）を HTTP Range で読み、z14 のピクセル格子（EPSG:3857）へ双線形で再投影してモザイクする。`scripts/s2-coverage.py` で地区内の欠けが0ピクセルであることを確認した。
 3. `scripts/s2-tiles.py`：ガンマ0.85で明るさを補正し、地区のポリゴンでくり抜いて（地区外は透明）、z9〜14 の XYZ タイル（透過 WebP、710枚、1.3 MB）を `public/tiles/s2-20260926/` に書き出す。範囲内で完全に透明なタイルも極小の透明画像として書き、404 を出さない。
 
+### 道路
+
+`scripts/fetch-overture-roads.py` で Overture の transportation テーマから道路（subtype=road、全クラス）を取り出し、`scripts/prepare-roads.py` で歩道・小道を除いて地区のポリゴンで切り抜き、GeoParquet（1,074本、63 KB）にした。地図上の道路をクリック・タップすると、クリック位置に最も近い道路上の点を求め、その区間の向きを `heading` に入れた Google ストリートビューのリンクをポップアップに出す。ポップアップには道路名（ない場合は道路の種類）と、その点が都市・農村どちらの区域かを表示する。道路以外をクリックしても何も出ない（区分と人口は右の表に常に表示）。
+
 ### ストリートビューの地点
 
 Overture の道路（transportation テーマ）から国道 PY02（Ruta Nacional Mariscal Estigarribia）を取り出し（`scripts/fetch-overture-roads.py`）、地区内を150 m おきに区切って半径300 m の建物数を数え、次の4地点を選んだ（`scripts/pick-streetview-points.py`）。
@@ -91,13 +95,15 @@ Overture の道路（transportation テーマ）から国道 PY02（Ruta Naciona
 python -m pip install duckdb shapely pyarrow numpy rasterio pillow
 python scripts/fetch-overture-buildings.py work/buildings_raw.parquet
 python scripts/prepare-buildings.py work/buildings_raw.parquet public/data/day9-yguazu.parquet public/data/day9-yguazu-buildings.parquet
+python scripts/fetch-overture-roads.py work/roads_all.json
+python scripts/prepare-roads.py work/roads_all.json public/data/day9-yguazu.parquet public/data/day9-yguazu-roads.parquet
 python scripts/s2-mosaic.py work scripts/s2-items-20260926.txt
 python scripts/s2-tiles.py work public/data/day9-yguazu.parquet public/tiles/s2-20260926
 ```
 
 ## ブラウザでの読み込み
 
-アプリは `data/day9-yguazu.parquet`（都市・農村の2面と人口）と `data/day9-yguazu-buildings.parquet`（建物8,571棟）をそれぞれ1回の fetch で取得し、ブラウザ内で GeoParquet を読む。
+アプリは `data/day9-yguazu.parquet`（都市・農村の2面と人口）、`data/day9-yguazu-buildings.parquet`（建物8,571棟）、`data/day9-yguazu-roads.parquet`（道路1,074本）をそれぞれ1回の fetch で取得し、ブラウザ内で GeoParquet を読む。WKB の Polygon・MultiPolygon・LineString・MultiLineString を復号する。
 
 - [hyparquet](https://github.com/hyparam/hyparquet) で Parquet を読み、ZSTD は [hyparquet-compressors](https://github.com/hyparam/hyparquet-compressors) の展開器だけを渡す。
 - hyparquet の GeoParquet 自動変換は使わず（`geoparquet: false`、`utf8: false`）、`geo` メタデータの encoding が WKB、CRS が EPSG:4326 であることを確認したうえで、`src/wkb.ts` で WKB を GeoJSON に復号する。
@@ -144,4 +150,5 @@ npm run preview
 - 建物数は人口ではない。農村の建物には倉庫や作業小屋も含まれうる。機械学習で抽出された建物（Google・Microsoft）には抜けや誤検出がありうる。
 - 建物データ（2026年10月版）・衛星写真（2026年9月）と国勢調査（2022年）は時点が異なる。
 - 衛星写真は背景として表示しているだけで、都市・農村の区分は衛星写真から作ったものではない。
-- ストリートビューの画像は Google のもので、撮影時期は国勢調査と異なる。地点によっては画像がない。
+- ストリートビューの画像は Google のもので、撮影時期は国勢調査と異なる。農道などでは画像がないことが多く、その場合は近くのパノラマか地図が開く。
+- 道路データ（Overture）にない道や、実際には通れない道が含まれることがある。

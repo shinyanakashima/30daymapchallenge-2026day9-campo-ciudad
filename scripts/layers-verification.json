@@ -86,5 +86,25 @@
         "buildings_300m": 5
       }
     ]
+  },
+  "roads": {
+    "source": "Overture Maps Foundation, release 2026-10-21.0, theme=transportation/type=segment, subtype=road (ODbL)",
+    "bbox_segments": 3670,
+    "excluded_classes": [
+      "footway",
+      "path"
+    ],
+    "clipped_to_district": 1074,
+    "by_class": {
+      "residential": 561,
+      "track": 164,
+      "trunk": 142,
+      "unclassified": 123,
+      "service": 65,
+      "unknown": 13,
+      "secondary": 6
+    },
+    "output": "public/data/day9-yguazu-roads.parquet",
+    "output_bytes": 63499
   }
 }

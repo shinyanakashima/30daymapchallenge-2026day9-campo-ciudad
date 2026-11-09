@@ -71,6 +71,20 @@ console.log("buildings", bbuf.byteLength, "bytes", braw.length, count, bySource,
 assert.equal(braw.length, 8571);
 assert.equal(count.urban, 2805);
 
+// ---- 道路 ----
+const rbuf = readFileSync(new URL("../public/data/day9-yguazu-roads.parquet", import.meta.url));
+const rfile = rbuf.buffer.slice(rbuf.byteOffset, rbuf.byteOffset + rbuf.byteLength);
+const rmeta = parquetMetadata(rfile, { geoparquet: false });
+const rraw = await parquetReadObjects({ file: rfile, metadata: rmeta, compressors, utf8: false });
+const rauto = await parquetReadObjects({ file: rfile, compressors });
+const rclass = {};
+rraw.forEach((r, i) => {
+  assert.deepEqual(wkbToGeometry(r.geometry, true), rauto[i].geometry, `road ${i} decode mismatch`);
+  rclass[r.class] = (rclass[r.class] ?? 0) + 1;
+});
+console.log("roads", rbuf.byteLength, "bytes", rraw.length, rclass);
+assert.ok(rraw.length > 0);
+
 // ---- 衛星タイル ----
 const tdir = new URL("../public/tiles/s2-20260926/", import.meta.url);
 let tiles = 0, tbytes = 0;
