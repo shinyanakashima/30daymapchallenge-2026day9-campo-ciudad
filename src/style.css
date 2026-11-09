@@ -219,7 +219,6 @@ button.quiet:hover:not(:disabled) { background: var(--blue-soft); border-color: 
 .sw-building { background: var(--blue); width: 7px; height: 7px; border-radius: 1px; margin: 3px; }
 /* 衛星写真表示では建物は白（都市区域内は赤）で描くので凡例も合わせる */
 body[data-view="satellite"] .sw-building { background: #fff; box-shadow: 0 0 0 1px #6b7180; }
-body[data-view="satellite"] .sw-outside { background: #3a3f4c; box-shadow: none; }
 
 .legend {
   list-style: none;
@@ -232,6 +231,28 @@ body[data-view="satellite"] .sw-outside { background: #3a3f4c; box-shadow: none;
 }
 .legend li { display: flex; align-items: center; gap: 8px; }
 .hint { margin: 10px 0 14px; color: var(--muted); font-size: 0.8rem; }
+
+/* ストリートビューの地点 */
+.sv { margin: 0 0 14px; }
+.sv h2 { font-size: 0.74rem; margin: 0 0 6px; color: var(--blue); text-transform: uppercase; letter-spacing: 0.05em; }
+:lang(ja) .sv h2 { text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+.sv-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.sv-list li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start; padding: 6px 0; border-top: 1px solid var(--line); }
+.sv-list li:first-child { border-top: 0; }
+.sv-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--blue); color: var(--blue); background: #fff;
+  font-size: 0.7rem; font-weight: 700; display: grid; place-items: center; margin-top: 1px;
+}
+.sv-list a { color: var(--blue); font-weight: 600; font-size: 0.84rem; text-decoration: none; }
+.sv-list a:hover { text-decoration: underline; }
+.sv-list a::after { content: " ↗"; font-weight: 400; }
+.sv-body { display: block; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
+.sv-go { height: 24px; font-size: 0.74rem; }
+.sv-note { margin: 6px 0 0; font-size: 0.74rem; color: var(--faint); }
+.pop.pop-sv strong { color: var(--blue); text-transform: none; letter-spacing: 0; font-size: 0.9rem; }
+.pop .sv-link { display: inline-block; margin-top: 6px; color: var(--blue); font-weight: 600; }
+.pop .sv-link::after { content: " ↗"; font-weight: 400; }
 
 /* 折りたたみ */
 .fold { border-top: 1px solid var(--line); padding: 10px 0 2px; }

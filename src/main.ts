@@ -15,6 +15,7 @@ import {
   type BuildingCollection,
 } from "./data";
 import { LANGS, TEXT, type Lang, type Strings } from "./i18n";
+import { VIEW_POINTS, streetViewUrl } from "./streetview";
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -30,7 +31,7 @@ const C = {
   buildingUrban: "#ffffff",
   satUrbanBuilding: "#ff5446",
 };
-const SATELLITE_TILES = `${new URL(import.meta.env.BASE_URL, location.href).href}tiles/s2-20260926/{z}/{x}/{y}.jpg`;
+const SATELLITE_TILES = `${new URL(import.meta.env.BASE_URL, location.href).href}tiles/s2-20260926/{z}/{x}/{y}.webp`;
 // 背景地図：OpenFreeMap の Positron（OpenStreetMap ベース、APIキー不要）
 const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
 let basemapOk = false;
@@ -114,6 +115,7 @@ function renderText() {
   });
   renderNumbers();
   renderBuildings();
+  renderViewList();
   renderStatus();
   renderCredit();
   if (popup && selected !== null) openPopupFor(selected, popup.getLngLat());
@@ -150,6 +152,63 @@ function renderBuildings() {
     status.className = buildingError ? "bld-status error" : "bld-status";
     status.textContent = buildingError ? s.bldError : s.bldLoading;
   }
+}
+
+// ストリートビューの地点一覧（パネル）
+function renderViewList() {
+  const ol = $("sv-list");
+  ol.innerHTML = "";
+  for (const p of VIEW_POINTS) {
+    const li = document.createElement("li");
+    const num = document.createElement("span");
+    num.className = "sv-num";
+    num.textContent = String(p.n);
+    const body = document.createElement("div");
+    const a = document.createElement("a");
+    a.href = streetViewUrl(p);
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = p.text[lang].title;
+    const d = document.createElement("span");
+    d.className = "sv-body";
+    d.textContent = p.text[lang].body;
+    body.append(a, d);
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "quiet sv-go";
+    go.textContent = t().svShow;
+    go.onclick = () => {
+      map.flyTo({ center: [p.lng, p.lat], zoom: 15 });
+      openViewPopup(p.n);
+    };
+    li.append(num, body, go);
+    ol.append(li);
+  }
+}
+
+function openViewPopup(n: number) {
+  const p = VIEW_POINTS.find((x) => x.n === n);
+  if (!p) return;
+  const s = t();
+  const box = document.createElement("div");
+  box.className = "pop pop-sv";
+  const h = document.createElement("strong");
+  h.textContent = `${p.n}. ${p.text[lang].title}`;
+  const b = document.createElement("div");
+  b.textContent = p.text[lang].body;
+  const a = document.createElement("a");
+  a.href = streetViewUrl(p);
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.className = "sv-link";
+  a.textContent = s.svOpen;
+  box.append(h, b, a);
+  popup?.remove();
+  setSelected(null);
+  popup = new maplibregl.Popup({ closeButton: true, maxWidth: "260px", focusAfterOpen: false, offset: 10 })
+    .setLngLat([p.lng, p.lat])
+    .setDOMContent(box)
+    .addTo(map);
 }
 
 function renderStatus() {
@@ -295,9 +354,10 @@ function applyView() {
   const sat = view === "satellite";
   map.setLayoutProperty("satellite", "visibility", sat ? "visible" : "none");
   map.setLayoutProperty("outside-mask", "visibility", "visible");
-  // 地区外のマスク：衛星写真では暗く、区分の色では背景地図を淡くかすませる
-  map.setPaintProperty("outside-mask", "fill-color", sat ? "#151a26" : "#c4c8d2");
-  map.setPaintProperty("outside-mask", "fill-opacity", sat ? 0.62 : basemapOk ? 0.35 : 0);
+  // 地区外のマスク：衛星写真は地区の形にくり抜いてあるので、地区外は背景地図を淡くかすませるだけ
+  // （背景地図がないときは衛星写真表示でだけ暗くする）
+  map.setPaintProperty("outside-mask", "fill-color", basemapOk ? "#c4c8d2" : "#151a26");
+  map.setPaintProperty("outside-mask", "fill-opacity", basemapOk ? 0.35 : sat ? 0.62 : 0);
   map.setPaintProperty("area-fill", "fill-color", ["case", isUrban, C.red, C.rural]);
   // 区分の色：背景地図があれば農村を半透明にして、道路や貯水池が透けて見えるようにする
   const ruralOpacity = basemapOk ? 0.62 : 1;
@@ -484,6 +544,37 @@ async function start() {
       paint: { "text-color": C.redDark, "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
     });
   }
+  // ストリートビューの地点（番号付きの丸）
+  map.addSource("viewpoints", {
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features: VIEW_POINTS.map((p) => ({ type: "Feature", properties: { n: p.n, label: String(p.n) }, geometry: { type: "Point", coordinates: [p.lng, p.lat] } })),
+    },
+  });
+  map.addLayer({
+    id: "viewpoints",
+    type: "circle",
+    source: "viewpoints",
+    minzoom: 8.5,
+    paint: { "circle-radius": 9, "circle-color": "#ffffff", "circle-stroke-color": C.blue, "circle-stroke-width": 2 },
+  });
+  if (basemapOk) {
+    map.addLayer({
+      id: "viewpoints-label",
+      type: "symbol",
+      source: "viewpoints",
+      minzoom: 8.5,
+      layout: { "text-field": ["get", "label"], "text-font": ["Noto Sans Bold"], "text-size": 11, "text-allow-overlap": true, "text-ignore-placement": true },
+      paint: { "text-color": C.blue },
+    });
+  }
+  map.on("click", "viewpoints", (ev) => {
+    const f = ev.features?.[0];
+    if (f) openViewPopup(Number(f.properties.n));
+  });
+  map.on("mouseenter", "viewpoints", () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", "viewpoints", () => (map.getCanvas().style.cursor = ""));
   map.on("error", (ev) => {
     // 衛星タイル・背景地図タイルの欠落は地図全体のエラーにしない
     const id = (ev as { sourceId?: string }).sourceId;
@@ -491,6 +582,7 @@ async function start() {
   });
 
   map.on("click", "area-fill", (ev) => {
+    if (map.queryRenderedFeatures(ev.point, { layers: ["viewpoints"] }).length) return;
     const f = ev.features?.[0] as MapGeoJSONFeature | undefined;
     if (!f) return;
     const id = Number(f.properties.id);
@@ -498,7 +590,7 @@ async function start() {
     openPopupFor(id, ev.lngLat);
   });
   map.on("click", (ev) => {
-    const hit = map.queryRenderedFeatures(ev.point, { layers: ["area-fill"] });
+    const hit = map.queryRenderedFeatures(ev.point, { layers: ["area-fill", "viewpoints"] });
     if (!hit.length) {
       popup?.remove();
       setSelected(null);

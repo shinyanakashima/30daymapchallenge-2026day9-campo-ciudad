@@ -3,14 +3,30 @@
   "buildings": {
     "source": "Overture Maps Foundation, release 2026-10-21.0, theme=buildings/type=building",
     "license": "ODbL-1.0 (includes OpenStreetMap ODbL, Google Open Buildings CC BY 4.0, Microsoft ML Buildings ODbL)",
-    "bbox_query": [-55.329, -25.5935, -54.8915, -25.2485],
+    "bbox_query": [
+      -55.329,
+      -25.5935,
+      -54.8915,
+      -25.2485
+    ],
     "bbox_rows": 31048,
-    "bbox_rows_by_dataset": { "Google Open Buildings": 12451, "Microsoft ML Buildings": 10114, "OpenStreetMap": 8483 },
+    "bbox_rows_by_dataset": {
+      "Google Open Buildings": 12451,
+      "Microsoft ML Buildings": 10114,
+      "OpenStreetMap": 8483
+    },
     "raw_sha256": "d30bf39aab9b056323899ad59f1b873c9ed780de931456c04651df22a237d5a5",
     "assignment": "point_on_surface inside the urban or rural area of day9-yguazu.parquet",
     "kept": 8571,
-    "by_area": { "urban": 2805, "rural": 5766 },
-    "by_source": { "google": 3691, "microsoft": 2206, "osm": 2674 },
+    "by_area": {
+      "urban": 2805,
+      "rural": 5766
+    },
+    "by_source": {
+      "google": 3691,
+      "microsoft": 2206,
+      "osm": 2674
+    },
     "output": "public/data/day9-yguazu-buildings.parquet",
     "output_sha256": "5cbc9d3611085cd2a55997fdac8ddf68227c601e3a7fad793c2503a3328255bc",
     "output_bytes": 315148
@@ -24,11 +40,51 @@
       "S2B_T21JXN_20260926T134226_L2A",
       "S2B_T21JYN_20260926T134226_L2A"
     ],
-    "cloud_cover_percent": [0.0, 0.0, 0.0, 0.0],
+    "cloud_cover_percent": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
     "district_pixels_uncovered": 0,
     "note": "2026-01-22 was tested first but left 8.1% of the district without data (swath edge).",
-    "processing": "bilinear reprojection to EPSG:3857 on the z14 pixel grid, mosaic, gamma 0.85, JPEG q80 XYZ tiles z9-14",
+    "processing": "bilinear reprojection to EPSG:3857 on the z14 pixel grid, mosaic, gamma 0.85, clipped to the district polygon (transparent outside), WebP q80 XYZ tiles z9-14; fully transparent tiles inside the extent are written as tiny transparent WebP to avoid 404s",
     "tiles": 710,
-    "tiles_mb": 6.2
+    "tiles_mb": 1.3
+  },
+  "streetview_points": {
+    "road": "Overture transportation segments, release 2026-10-21.0, 'Ruta Nacional Mariscal Estigarribia' (PY02)",
+    "method": "sample every 150 m on PY02 inside the district, count building centroids within 300 m",
+    "points": [
+      {
+        "n": 1,
+        "lat": -25.464841,
+        "lng": -55.0047,
+        "rule": "urban, max buildings within 300 m",
+        "buildings_300m": 264
+      },
+      {
+        "n": 2,
+        "lat": -25.454529,
+        "lng": -55.038429,
+        "rule": "rural, 300-1200 m from urban area, max buildings",
+        "buildings_300m": 99,
+        "dist_urban_m": 1004
+      },
+      {
+        "n": 3,
+        "lat": -25.445976,
+        "lng": -55.165321,
+        "rule": "rural, west of -55.12, max buildings",
+        "buildings_300m": 219
+      },
+      {
+        "n": 4,
+        "lat": -25.44983,
+        "lng": -55.08666,
+        "rule": "rural, -55.10 to -55.04, >2.5 km from urban, min buildings",
+        "buildings_300m": 5
+      }
+    ]
   }
 }

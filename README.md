@@ -70,7 +70,20 @@ python scripts/prepare-yguazu.py /path/to/extracted-directory
 
 1. Earth Search で雲量の少ない撮影日を探した。2026年1月22日は地区の8.1%が撮影範囲の端で欠けたため、全域を覆う2026年9月26日（4タイルとも雲量0%）を使った。対象アイテムは `scripts/s2-items-20260926.txt`。
 2. `scripts/s2-mosaic.py`：TCI（COG）を HTTP Range で読み、z14 のピクセル格子（EPSG:3857）へ双線形で再投影してモザイクする。`scripts/s2-coverage.py` で地区内の欠けが0ピクセルであることを確認した。
-3. `scripts/s2-tiles.py`：ガンマ0.85で明るさを補正し、z9〜14 の XYZ JPEG タイル（710枚、6.2 MB）を `public/tiles/s2-20260926/` に書き出す。
+3. `scripts/s2-tiles.py`：ガンマ0.85で明るさを補正し、地区のポリゴンでくり抜いて（地区外は透明）、z9〜14 の XYZ タイル（透過 WebP、710枚、1.3 MB）を `public/tiles/s2-20260926/` に書き出す。範囲内で完全に透明なタイルも極小の透明画像として書き、404 を出さない。
+
+### ストリートビューの地点
+
+Overture の道路（transportation テーマ）から国道 PY02（Ruta Nacional Mariscal Estigarribia）を取り出し（`scripts/fetch-overture-roads.py`）、地区内を150 m おきに区切って半径300 m の建物数を数え、次の4地点を選んだ（`scripts/pick-streetview-points.py`）。
+
+| 番号 | 地点 | 選び方 |
+| --- | --- | --- |
+| 1 | 町の中心 | 都市区域内で建物が最も多い地点 |
+| 2 | 都市区域のすぐ外 | 都市区域から300〜1,200 m の農村区域で建物が最も多い地点（約1 km 西、99棟） |
+| 3 | 国道沿いの集落 | 西経55.12°より西の農村区域で建物が最も多い地点（町から約16 km 西） |
+| 4 | 畑 | 都市区域から2.5 km 以上離れた区間で建物が最も少ない地点 |
+
+リンクは [Google Maps URLs](https://developers.google.com/maps/documentation/urls/get-started)（`map_action=pano`、APIキー不要）で、指定地点に最も近いパノラマを新しいタブで開く。画像の有無や撮影時期は Google 側に依存し、アプリでは確認していない。
 
 検査値とハッシュは `scripts/layers-verification.json`。
 
@@ -79,7 +92,7 @@ python -m pip install duckdb shapely pyarrow numpy rasterio pillow
 python scripts/fetch-overture-buildings.py work/buildings_raw.parquet
 python scripts/prepare-buildings.py work/buildings_raw.parquet public/data/day9-yguazu.parquet public/data/day9-yguazu-buildings.parquet
 python scripts/s2-mosaic.py work scripts/s2-items-20260926.txt
-python scripts/s2-tiles.py work public/tiles/s2-20260926
+python scripts/s2-tiles.py work public/data/day9-yguazu.parquet public/tiles/s2-20260926
 ```
 
 ## ブラウザでの読み込み
@@ -131,3 +144,4 @@ npm run preview
 - 建物数は人口ではない。農村の建物には倉庫や作業小屋も含まれうる。機械学習で抽出された建物（Google・Microsoft）には抜けや誤検出がありうる。
 - 建物データ（2026年10月版）・衛星写真（2026年9月）と国勢調査（2022年）は時点が異なる。
 - 衛星写真は背景として表示しているだけで、都市・農村の区分は衛星写真から作ったものではない。
+- ストリートビューの画像は Google のもので、撮影時期は国勢調査と異なる。地点によっては画像がない。
