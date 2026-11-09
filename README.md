@@ -74,7 +74,7 @@ python scripts/prepare-yguazu.py /path/to/extracted-directory
 
 ### 道路
 
-`scripts/fetch-overture-roads.py` で Overture の transportation テーマから道路（subtype=road、全クラス）を取り出し、`scripts/prepare-roads.py` で歩道・小道を除いて地区のポリゴンで切り抜き、GeoParquet（1,074本、63 KB）にした。地図上の道路をクリック・タップすると、クリック位置に最も近い道路上の点を求め、その区間の向きを `heading` に入れた Google ストリートビューのリンクをポップアップに出す。ポップアップには道路名（ない場合は道路の種類）と、その点が都市・農村どちらの区域かを表示する。道路以外をクリックしても何も出ない（区分と人口は右の表に常に表示）。
+`scripts/fetch-overture-roads.py` で Overture の transportation テーマから道路（subtype=road、全クラス）を取り出し、`scripts/prepare-roads.py` で歩道・小道を除いて地区のポリゴンで切り抜き、GeoParquet（1,074本、63 KB）にした。Google ストリートビューの画像がある可能性が高い道路だけをクリック対象にしている：国道・県道（PY02 と Ruta Departamental 007）と、点の半分以上が都市区域に入る道路（624本）。農道などその他の道路は細く淡く描き、クリックには反応しない。画像の有無を事前に確かめるには Google の API キーが必要で、結果を保存すると Google の利用規約（事前取得・保存の禁止）に触れるおそれがあるため、確認はしていない。対象の道路をクリック・タップすると、クリック位置に最も近い道路上の点を求め、その区間の向きを `heading` に入れた Google ストリートビューのリンクをポップアップに出す。ポップアップには道路名（ない場合は道路の種類）と、その点が都市・農村どちらの区域かを表示する。道路以外をクリックしても何も出ない（区分と人口は右の表に常に表示）。
 
 ### ストリートビューの地点
 

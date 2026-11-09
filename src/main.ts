@@ -390,7 +390,10 @@ function openRoadPopup(roadId: number, lng: number, lat: number) {
   a.rel = "noopener";
   a.className = "sv-link";
   a.textContent = s.svHere;
-  box.append(h, sub, a);
+  const note = document.createElement("div");
+  note.className = "pop-note";
+  note.textContent = s.svMaybe;
+  box.append(h, sub, a, note);
   popup?.remove();
   if (hoveredRoad !== null) map.setFeatureState({ source: "roads", id: hoveredRoad }, { hover: false });
   map.setFeatureState({ source: "roads", id: roadId }, { hover: true });
@@ -455,11 +458,14 @@ function applyView() {
   );
   map.setPaintProperty("building-points", "circle-opacity", sat ? 0.9 : ["case", isUrban, 0.55, 0.6]);
   if (map.getLayer("roads")) {
+    // ストリートビュー対象の道路は濃く、それ以外（農道など）は淡く
     map.setPaintProperty("roads", "line-color", [
       "case",
       ["boolean", ["feature-state", "hover"], false],
       sat ? "#ffffff" : C.blue,
-      sat ? "#f3d36b" : "#6f7686",
+      ["boolean", ["get", "sv"], false],
+      sat ? "#f3d36b" : "#3f5a96",
+      sat ? "#d8cfa8" : "#a2a8b5",
     ]);
   }
   $("view-census").setAttribute("aria-pressed", String(!sat));
@@ -584,6 +590,7 @@ async function start() {
   const major: ExpressionSpecification = ["match", ["get", "class"], ["motorway", "trunk", "primary"], true, false];
   const mid: ExpressionSpecification = ["match", ["get", "class"], ["secondary", "tertiary"], true, false];
   const hov: ExpressionSpecification = ["boolean", ["feature-state", "hover"], false];
+  const sv: ExpressionSpecification = ["boolean", ["get", "sv"], false];
   addLayer({
     id: "roads",
     type: "line",
@@ -591,11 +598,11 @@ async function start() {
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
       "line-color": "#6f7686",
-      "line-opacity": ["case", hov, 1, 0.85],
+      "line-opacity": ["case", hov, 1, sv, 0.95, 0.5],
       "line-width": [
         "interpolate", ["linear"], ["zoom"],
-        9, ["case", hov, 3, major, 1.6, mid, 1.1, 0.5],
-        14, ["case", hov, 6, major, 4, mid, 3, 1.8],
+        9, ["case", hov, 3, major, 1.8, mid, 1.3, sv, 0.8, 0.4],
+        14, ["case", hov, 6, major, 4.5, mid, 3.5, sv, 2.6, 1.2],
       ],
     },
   });
@@ -603,6 +610,8 @@ async function start() {
     id: "roads-hit",
     type: "line",
     source: "roads",
+    // クリックできるのはストリートビュー対象の道路だけ
+    filter: ["==", ["get", "sv"], true],
     paint: { "line-color": "#000000", "line-opacity": 0, "line-width": 18 },
   });
   addLayer({
@@ -747,6 +756,14 @@ async function start() {
 
   const r = await roadsPromise;
   if (r) {
+    // 画像がある可能性が高い道路：国道・県道（PY02、Ruta 007）と、都市区域内の道路
+    const SV_CLASSES = new Set(["motorway", "trunk", "primary", "secondary"]);
+    for (const f of r.features) {
+      const pts = f.geometry.type === "LineString" ? f.geometry.coordinates : f.geometry.coordinates.flat();
+      // 都市区域の道路は、点の半分以上が都市区域に入るものに限る（町から畑へ延びる農道を除く）
+      const inUrban = pts.filter(([x, y]) => areaAt(x, y) === "urban").length;
+      f.properties.sv = SV_CLASSES.has(f.properties.class) || inUrban >= pts.length / 2;
+    }
     roads = r;
     (map.getSource("roads") as maplibregl.GeoJSONSource).setData(r);
     ($("show-roads") as HTMLInputElement).disabled = false;
@@ -763,7 +780,7 @@ async function start() {
   applyBuildings();
   renderBuildings();
   // 検証用：読み込んだ値を外部から確認できるようにする
-  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), roads: roads?.features.length ?? 0, bbox: [w, s, e, n] };
+  (window as unknown as { __yguazu: unknown }).__yguazu = { stats: stats(), buildings: buildingStats(), roads: roads?.features.length ?? 0, svRoads: roads?.features.filter((f) => f.properties.sv).length ?? 0, bbox: [w, s, e, n] };
   document.body.dataset.ready = "true";
 }
 

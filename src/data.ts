@@ -100,7 +100,8 @@ export async function loadBuildings(url = BUILDINGS_URL): Promise<BuildingCollec
   return { type: "FeatureCollection", features };
 }
 
-export type RoadProps = { id: number; class: string; name: string | null };
+// sv: ストリートビューの画像がある可能性が高い道路（国道・県道と都市区域内の道路）。アプリ側で設定する
+export type RoadProps = { id: number; class: string; name: string | null; sv?: boolean };
 export type RoadCollection = FeatureCollection<LineString | MultiLineString, RoadProps>;
 
 export async function loadRoads(url = ROADS_URL): Promise<RoadCollection> {
