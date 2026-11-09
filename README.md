@@ -33,6 +33,7 @@
 - INE. [Censo 2022 – Estructura de la población por edad y sexo](https://www.ine.gov.py/Publicaciones/Biblioteca/documento/257/Censo%202022%20-%20Estructura%20de%20la%20poblacion%20por%20edad%20y%20sexo.pdf)：Cuadro A1・A13 の Yguazú 都市・農村人口。PDFの値を確認して入力した（自動取得したCSVではない）。
 - AREAコードの意味（`1=URBANA`、`6=RURAL`）は、INEのRARに説明表が同梱されていないため、パラグアイ保健省ドメインの[公式コード表](https://vigicanpy.mspbs.gov.py/guia/site/CodeSystem-GeoTipoAreasPYCS.html)で補った。
 - 建物：[Overture Maps Foundation](https://docs.overturemaps.org/attribution/) リリース 2026-10-21.0 の buildings テーマ（ODbL）。OpenStreetMap（© OpenStreetMap contributors、ODbL）、Google Open Buildings（CC BY 4.0）、Microsoft ML Building Footprints（ODbL）を含む。
+- 背景地図：OpenFreeMap（Positron スタイル）、© OpenMapTiles、データ © OpenStreetMap contributors（ODbL）。
 - 衛星写真：Copernicus Sentinel-2 L2A の真色画像（TCI、10 m）。2026年9月26日撮影の4タイル（雲量0%）。[Element 84 Earth Search](https://earth-search.aws.element84.com/v1) から取得。「Contains modified Copernicus Sentinel data 2026」。
 - 取得・加工：国勢調査データは2026年11月6日、建物と衛星写真は2026年11月9日。
 
@@ -92,7 +93,9 @@ python scripts/s2-tiles.py work public/tiles/s2-20260926
 - 建物は拡大時（ズーム12.5以上）に輪郭、広域では建物ごとの点で表示する。
 - 初期表示は「衛星写真」＋建物。自前で作ったタイルを表示し、地区外を暗くする。都市区域は赤い半透明の面、建物は都市区域内を赤、農村区域を白で描く。
 - 「区分の色」表示では都市を赤、農村を白で塗り、地区外は無彩色の背景にする。
-- 外部の地図タイルサービスは使っていない。
+- 背景地図は [OpenFreeMap](https://openfreemap.org/) の Positron スタイル（OpenStreetMap ベース、APIキー不要・商用可）を `tiles.openfreemap.org` から読み込む。地名ラベルは自前の層より上に置き、背景地図に含まれる建物の層は Overture の建物と重複するため隠している。「区分の色」表示では農村区域を半透明にして道路や貯水池を透かし、地区外を淡くかすませる。
+- 背景地図を読み込めない場合（10秒で打ち切り）は背景なしで表示を続け、国勢調査の地図と数値は表示する。
+- 「Paraguay」（日本語では「パラグアイ全体」）ボタンで国全体に引き、地区の位置を赤い印と「Yguazú」のラベルで示す。
 - 配色はパラグアイの国旗の赤・白・青に寄せたが、国旗・国章そのものは使っていない（政府の公式作品と誤認させないため）。
 
 `npm run check` は Node.js で同じファイルを読み、人口合計8,131・比率・ハッシュ・CRS、建物の棟数と区分を確認し、`src/wkb.ts` の復号結果が hyparquet 内蔵の復号結果と一致することを検査する。衛星タイルがあることも確認する。

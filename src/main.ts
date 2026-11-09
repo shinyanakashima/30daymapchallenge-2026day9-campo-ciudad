@@ -31,6 +31,11 @@ const C = {
   satUrbanBuilding: "#ff5446",
 };
 const SATELLITE_TILES = `${new URL(import.meta.env.BASE_URL, location.href).href}tiles/s2-20260926/{z}/{x}/{y}.jpg`;
+// 背景地図：OpenFreeMap の Positron（OpenStreetMap ベース、APIキー不要）
+const BASEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+let basemapOk = false;
+// パラグアイ全体の範囲（位置確認用）
+const PARAGUAY_BOUNDS: LngLatBoundsLike = [[-62.65, -27.61], [-54.26, -19.29]];
 // タイルを作った範囲（地区の外接矩形 + 0.03°）
 const SATELLITE_BOUNDS: [number, number, number, number] = [-55.359, -25.6235, -54.8615, -25.2185];
 
@@ -184,7 +189,7 @@ const map = new maplibregl.Map({
   },
   center: [-55.11, -25.42],
   zoom: 9,
-  minZoom: 7,
+  minZoom: 4.5,
   maxZoom: 17,
   attributionControl: false,
   dragRotate: false,
@@ -212,7 +217,9 @@ function renderCredit() {
   if (!creditEl) return;
   const s = t();
   const parts = [s.attribution];
-  if (showBuildings && buildings) parts.push(s.attrBuildings);
+  if (basemapOk) parts.push(s.attrBasemap);
+  // OpenStreetMap の表記は背景地図の表記に含まれるので、建物では重ねて書かない
+  if (showBuildings && buildings) parts.push(basemapOk ? s.attrBuildingsShort : s.attrBuildings);
   if (view === "satellite") parts.push(s.attrSatellite);
   creditEl.textContent = parts.join(" · ");
 }
@@ -287,14 +294,19 @@ function applyView() {
   if (!map.getLayer("area-fill")) return;
   const sat = view === "satellite";
   map.setLayoutProperty("satellite", "visibility", sat ? "visible" : "none");
-  map.setLayoutProperty("outside-mask", "visibility", sat ? "visible" : "none");
-  // 衛星写真の範囲外は暗い地にして、画像の端が目立たないようにする
-  map.setPaintProperty("bg", "background-color", sat ? "#151a26" : C.outside);
+  map.setLayoutProperty("outside-mask", "visibility", "visible");
+  // 地区外のマスク：衛星写真では暗く、区分の色では背景地図を淡くかすませる
+  map.setPaintProperty("outside-mask", "fill-color", sat ? "#151a26" : "#c4c8d2");
+  map.setPaintProperty("outside-mask", "fill-opacity", sat ? 0.62 : basemapOk ? 0.35 : 0);
   map.setPaintProperty("area-fill", "fill-color", ["case", isUrban, C.red, C.rural]);
+  // 区分の色：背景地図があれば農村を半透明にして、道路や貯水池が透けて見えるようにする
+  const ruralOpacity = basemapOk ? 0.62 : 1;
   map.setPaintProperty(
     "area-fill",
     "fill-opacity",
-    sat ? ["case", isUrban, ["case", isSelected, 0.45, 0.3], ["case", isSelected, 0.18, 0]] : 1,
+    sat
+      ? ["case", isUrban, ["case", isSelected, 0.45, 0.3], ["case", isSelected, 0.18, 0]]
+      : ["case", isUrban, 1, ["case", isSelected, Math.min(1, ruralOpacity + 0.2), ruralOpacity]],
   );
   map.setPaintProperty("area-line", "line-color", ["case", isUrban, sat ? C.red : C.redDark, sat ? "#ffffff" : C.ruralLine]);
   map.setPaintProperty("district-outline", "line-color", sat ? "#ffffff" : C.blue);
@@ -340,8 +352,34 @@ function buildingPoints(b: BuildingCollection): GeoJSON.FeatureCollection<GeoJSO
   };
 }
 
+// 背景地図のスタイルを読み込む。失敗したら背景なしの地図で続ける（国勢調査の地図は表示する）
+async function loadBasemap(): Promise<void> {
+  const loaded = () => new Promise<void>((res) => (map.loaded() ? res() : map.once("load", () => res())));
+  try {
+    const res = await fetch(BASEMAP_STYLE, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const style = await res.json();
+    await loaded();
+    const styled = new Promise<void>((r) => map.once("style.load", () => r()));
+    map.setStyle(style);
+    await styled;
+    // 背景地図の建物は Overture の建物と重複するので隠す
+    if (map.getLayer("building")) map.setLayoutProperty("building", "visibility", "none");
+    basemapOk = true;
+  } catch (e) {
+    console.warn("Basemap unavailable; continuing without it", e);
+    await loaded();
+  }
+}
+
+// 自前の層は背景地図のラベルより下に入れ、地名が読めるようにする
+let labelsBelow: string | undefined;
+function addLayer(layer: maplibregl.AddLayerObject) {
+  map.addLayer(layer, labelsBelow);
+}
+
 async function start() {
-  const mapReady = new Promise<void>((res) => (map.loaded() ? res() : map.once("load", () => res())));
+  const mapReady = loadBasemap();
   const buildingsPromise = loadBuildings().catch((e) => {
     console.error(e);
     buildingError = e;
@@ -363,7 +401,8 @@ async function start() {
   const urban: AreaCollection = { ...areas, features: areas.features.filter((f) => f.properties.area_type === "urban") };
   const [uw, us, ue, un] = bboxOf(urban);
   urbanBounds = [[uw, us], [ue, un]];
-  map.setMaxBounds([[w - 0.6, s - 0.45], [e + 0.6, n + 0.45]]);
+  map.setMaxBounds([[-66, -30.5], [-51, -16.5]]);
+  labelsBelow = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
 
   map.addSource("satellite", {
     type: "raster",
@@ -373,9 +412,9 @@ async function start() {
     maxzoom: 14,
     bounds: SATELLITE_BOUNDS,
   });
-  map.addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } });
+  addLayer({ id: "satellite", type: "raster", source: "satellite", layout: { visibility: "none" } });
   map.addSource("mask", { type: "geojson", data: outsideMask(areas) });
-  map.addLayer({
+  addLayer({
     id: "outside-mask",
     type: "fill",
     source: "mask",
@@ -383,12 +422,12 @@ async function start() {
     paint: { "fill-color": "#151a26", "fill-opacity": 0.62 },
   });
   map.addSource("areas", { type: "geojson", data: areas });
-  map.addLayer({ id: "area-fill", type: "fill", source: "areas", paint: { "fill-color": C.rural } });
+  addLayer({ id: "area-fill", type: "fill", source: "areas", paint: { "fill-color": C.rural } });
   map.addSource("buildings", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   // 建物：拡大時は輪郭、広域では小さすぎて見えないため点で分布を示す
-  map.addLayer({ id: "buildings", type: "fill", source: "buildings", minzoom: 12.5, paint: { "fill-color": C.buildingRural } });
+  addLayer({ id: "buildings", type: "fill", source: "buildings", minzoom: 12.5, paint: { "fill-color": C.buildingRural } });
   map.addSource("building-points", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-  map.addLayer({
+  addLayer({
     id: "building-points",
     type: "circle",
     source: "building-points",
@@ -398,7 +437,7 @@ async function start() {
       "circle-color": C.buildingRural,
     },
   });
-  map.addLayer({
+  addLayer({
     id: "area-line",
     type: "line",
     source: "areas",
@@ -418,16 +457,37 @@ async function start() {
   });
   // 地区の外周（都市・農村の共有辺を除いた線＝地区界）
   map.addSource("outline", { type: "geojson", data: districtOutline(areas) });
-  map.addLayer({
+  addLayer({
     id: "district-outline",
     type: "line",
     source: "outline",
     layout: { "line-join": "round", "line-cap": "round" },
     paint: { "line-color": C.blue, "line-width": 2 },
   });
+  // 広域表示（パラグアイ全体など）では地区が小さすぎるので、位置を赤い印で示す
+  const cx = (w + e) / 2, cy = (s + n) / 2;
+  map.addSource("locator", { type: "geojson", data: { type: "Feature", properties: { name: "Yguazú" }, geometry: { type: "Point", coordinates: [cx, cy] } } });
+  map.addLayer({
+    id: "locator",
+    type: "circle",
+    source: "locator",
+    maxzoom: 8.5,
+    paint: { "circle-radius": 7, "circle-color": C.red, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 },
+  });
+  if (basemapOk) {
+    map.addLayer({
+      id: "locator-label",
+      type: "symbol",
+      source: "locator",
+      maxzoom: 8.5,
+      layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Bold"], "text-size": 14, "text-offset": [0, 1.3], "text-anchor": "top" },
+      paint: { "text-color": C.redDark, "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
+    });
+  }
   map.on("error", (ev) => {
-    // 衛星タイルの欠落は地図全体のエラーにしない
-    if ((ev as { sourceId?: string }).sourceId !== "satellite") console.error(ev.error);
+    // 衛星タイル・背景地図タイルの欠落は地図全体のエラーにしない
+    const id = (ev as { sourceId?: string }).sourceId;
+    if (id !== "satellite" && id !== "openmaptiles" && id !== "ne2_shaded") console.error(ev.error);
   });
 
   map.on("click", "area-fill", (ev) => {
@@ -447,7 +507,12 @@ async function start() {
   map.on("mouseenter", "area-fill", () => (map.getCanvas().style.cursor = "pointer"));
   map.on("mouseleave", "area-fill", () => (map.getCanvas().style.cursor = ""));
 
-  for (const id of ["zoom-urban", "reset", "view-census", "view-satellite"]) ($(id) as HTMLButtonElement).disabled = false;
+  for (const id of ["zoom-urban", "reset", "locate", "view-census", "view-satellite"]) ($(id) as HTMLButtonElement).disabled = false;
+  $("locate").onclick = () => {
+    popup?.remove();
+    setSelected(null);
+    map.fitBounds(PARAGUAY_BOUNDS, { padding: fitPadding() });
+  };
   $("zoom-urban").onclick = () => urbanBounds && map.fitBounds(urbanBounds, { padding: fitPadding(), maxZoom: 15 });
   $("reset").onclick = () => {
     popup?.remove();
