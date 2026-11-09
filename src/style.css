@@ -159,6 +159,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 .sw-rural { background: var(--rural); border: 1px solid var(--rural-line); }
 .sw-outside { background: var(--outside); border: 1px solid #aeb3bf; }
 .sw-building { background: var(--blue); border: 1px solid var(--blue); width: 8px; height: 8px; margin: 3px; }
+/* 衛星写真表示では建物は白（都市区域内は赤）で描くので凡例も合わせる */
+body[data-view="satellite"] .sw-building { background: #fff; border-color: #6b7180; }
 
 .legend { list-style: none; padding: 0; margin: 16px 0 4px; display: grid; gap: 4px; }
 .legend li { display: flex; align-items: center; gap: 8px; }

@@ -28,6 +28,7 @@ const C = {
   outside: "#d3d6dd",
   buildingRural: "#0038a8",
   buildingUrban: "#ffffff",
+  satUrbanBuilding: "#ff5446",
 };
 const SATELLITE_TILES = `${new URL(import.meta.env.BASE_URL, location.href).href}tiles/s2-20260926/{z}/{x}/{y}.jpg`;
 // タイルを作った範囲（地区の外接矩形 + 0.03°）
@@ -65,7 +66,8 @@ let buildingError: unknown = null;
 let selected: number | null = null;
 let popup: maplibregl.Popup | null = null;
 let loadError: unknown = null;
-let view: "census" | "satellite" = "census";
+// 初期表示は衛星写真＋建物
+let view: "census" | "satellite" = "satellite";
 let showBuildings = true;
 
 function stats() {
@@ -290,23 +292,24 @@ function applyView() {
   map.setPaintProperty(
     "area-fill",
     "fill-opacity",
-    sat ? ["case", isUrban, ["case", isSelected, 0.35, 0.18], ["case", isSelected, 0.18, 0]] : 1,
+    sat ? ["case", isUrban, ["case", isSelected, 0.45, 0.3], ["case", isSelected, 0.18, 0]] : 1,
   );
   map.setPaintProperty("area-line", "line-color", ["case", isUrban, sat ? C.red : C.redDark, sat ? "#ffffff" : C.ruralLine]);
   map.setPaintProperty("district-outline", "line-color", sat ? "#ffffff" : C.blue);
   map.setPaintProperty(
     "buildings",
     "fill-color",
-    sat ? "#ffffff" : ["case", isUrban, C.buildingUrban, C.buildingRural],
+    // 衛星写真では都市の建物を赤、農村の建物を白にして、都市区域が赤く見えるようにする
+    sat ? ["case", isUrban, C.satUrbanBuilding, "#ffffff"] : ["case", isUrban, C.buildingUrban, C.buildingRural],
   );
   map.setPaintProperty("buildings", "fill-opacity", sat ? 0.85 : ["case", isUrban, 0.9, 0.75]);
   map.setPaintProperty(
     "building-points",
     "circle-color",
     // 広域では都市の点を濃い赤にして、赤い都市区域が点で白く埋もれないようにする
-    sat ? "#ffffff" : ["case", isUrban, C.redDark, C.buildingRural],
+    sat ? ["case", isUrban, C.satUrbanBuilding, "#ffffff"] : ["case", isUrban, C.redDark, C.buildingRural],
   );
-  map.setPaintProperty("building-points", "circle-opacity", sat ? 0.8 : ["case", isUrban, 0.55, 0.6]);
+  map.setPaintProperty("building-points", "circle-opacity", sat ? 0.9 : ["case", isUrban, 0.55, 0.6]);
   $("view-census").setAttribute("aria-pressed", String(!sat));
   $("view-satellite").setAttribute("aria-pressed", String(sat));
   document.body.dataset.view = view;
